@@ -139,9 +139,4 @@ struct QueryExpressionCompilerVisitor : public QueryExpressionVisitor {
 	virtual void visit(QueryExpression* parent, QueryValueExpression* expression) override;
 	virtual void visit(QueryExpression* parent, QueryAndExpression* expression) override;
 	virtual void visit(QueryExpression* parent, QueryCompareExpression* expression) override;
-	virtual void visit(QueryExpression* parent, QueryColumnReferenceSlottedExpression* expression) override;
-	virtual void visit(QueryExpression* parent, QueryCompareLeftValueRightColumnExpression* expression) override;
-	virtual void visit(QueryExpression* parent, QueryCompareLeftColumnRightValueExpression* expression) override;
-	virtual void visit(QueryExpression* parent, QueryCompareLeftColumnRightColumnExpression* expression) override;
-	virtual void visit(QueryExpression* parent, QueryCompareLeftValueInt32RightColumnExpression* expression) override;
 };

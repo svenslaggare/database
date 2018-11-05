@@ -210,23 +210,3 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 		executionEngine.instructions.push_back(std::make_unique<CompareExpressionIR>(expression->op));
 	}
 }
-
-void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryColumnReferenceSlottedExpression* expression) {
-
-}
-
-void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompareLeftValueRightColumnExpression* expression) {
-
-}
-
-void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompareLeftColumnRightValueExpression* expression) {
-
-}
-
-void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompareLeftColumnRightColumnExpression* expression) {
-
-}
-
-void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompareLeftValueInt32RightColumnExpression* expression) {
-
-}

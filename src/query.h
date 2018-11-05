@@ -29,7 +29,7 @@ struct QuerySelectOperation : public QueryOperation {
 	virtual void accept(QueryOperationVisitor& visitor) override;
 };
 
-/*
+/**
  * Represents an insert operation
  */
 struct QueryInsertOperation : public QueryOperation {
@@ -40,6 +40,13 @@ struct QueryInsertOperation : public QueryOperation {
 	QueryInsertOperation(const std::string& table, std::vector<std::string> columns, std::vector<std::vector<QueryValue>> values);
 
 	virtual void accept(QueryOperationVisitor& visitor) override;
+};
+
+/**
+ * Represents an update operation
+ */
+struct QueryUpdateOperation : public QueryOperation {
+
 };
 
 /**

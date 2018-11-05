@@ -1,9 +1,8 @@
 #include "evaluator.h"
 #include "helpers.h"
-#include "optimizer.h"
 
-QueryExpressionEvaluatorVisitor::QueryExpressionEvaluatorVisitor(const Table& table, QueryExpressionOptimizerData& optimizerData, std::size_t rowIndex)
-	: table(table), optimizerData(optimizerData), rowIndex(rowIndex) {
+QueryExpressionEvaluatorVisitor::QueryExpressionEvaluatorVisitor(const Table& table, std::size_t rowIndex)
+	: table(table), rowIndex(rowIndex) {
 
 }
 
@@ -70,50 +69,4 @@ void QueryExpressionEvaluatorVisitor::visit(QueryExpression* parent, QueryCompar
 	};
 
 	handleGenericType(op1.type, handleForType);
-}
-
-void QueryExpressionEvaluatorVisitor::visit(QueryExpression* parent, QueryColumnReferenceSlottedExpression* expression) {
-	evaluationStack.push(QueryExpressionHelpers::getValueForColumn(
-		*optimizerData.columnStorage[expression->index],
-		rowIndex));
-}
-
-void QueryExpressionEvaluatorVisitor::visit(QueryExpression* parent, QueryCompareLeftValueRightColumnExpression* expression) {
-	auto handleForType = [&](auto dummy) {
-		using Type = decltype(dummy);
-		Type lhs = expression->lhs.getValue<Type>();
-		Type rhs = optimizerData.columnStorage[expression->rhs]->getUnderlyingStorage<Type>()[rowIndex];
-		evaluationStack.push(QueryValue(QueryExpressionHelpers::compare(expression->op, lhs, rhs)));
-	};
-
-	handleGenericType(expression->lhs.type, handleForType);
-}
-
-void QueryExpressionEvaluatorVisitor::visit(QueryExpression* parent, QueryCompareLeftValueInt32RightColumnExpression* expression) {
-	auto rhs = optimizerData.columnStorage[expression->rhs]->getUnderlyingStorage<std::int32_t>()[rowIndex];
-	evaluationStack.push(QueryValue(QueryExpressionHelpers::compare(expression->op, expression->lhs, rhs)));
-}
-
-void QueryExpressionEvaluatorVisitor::visit(QueryExpression* parent, QueryCompareLeftColumnRightValueExpression* expression) {
-	auto handleForType = [&](auto dummy) {
-		using Type = decltype(dummy);
-		Type lhs = optimizerData.columnStorage[expression->lhs]->getUnderlyingStorage<Type>()[rowIndex];
-		Type rhs = expression->rhs.getValue<Type>();
-		evaluationStack.push(QueryValue(QueryExpressionHelpers::compare(expression->op, lhs, rhs)));
-	};
-
-	handleGenericType(expression->rhs.type, handleForType);
-}
-
-void QueryExpressionEvaluatorVisitor::visit(QueryExpression* parent, QueryCompareLeftColumnRightColumnExpression* expression) {
-	auto& lhsColumn = *optimizerData.columnStorage[expression->lhs];
-
-	auto handleForType = [&](auto dummy) {
-		using Type = decltype(dummy);
-		Type lhs = lhsColumn.getUnderlyingStorage<Type>()[rowIndex];
-		Type rhs = optimizerData.columnStorage[expression->rhs]->getUnderlyingStorage<Type>()[rowIndex];
-		evaluationStack.push(QueryValue(QueryExpressionHelpers::compare(expression->op, lhs, rhs)));
-	};
-
-	handleGenericType(lhsColumn.type, handleForType);
 }

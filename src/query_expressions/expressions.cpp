@@ -37,8 +37,7 @@ void QueryValueExpression::accept(QueryExpressionVisitor& visitor, QueryExpressi
 	visitor.visit(parent, this);
 }
 
-QueryAndExpression::QueryAndExpression(std::unique_ptr<QueryBoolExpression> lhs,
-													   std::unique_ptr<QueryBoolExpression> rhs)
+QueryAndExpression::QueryAndExpression(std::unique_ptr<QueryBoolExpression> lhs, std::unique_ptr<QueryBoolExpression> rhs)
 	: lhs(std::move(lhs)), rhs(std::move(rhs)) {
 
 }
@@ -67,8 +66,8 @@ void QueryAndExpression::update(QueryExpression* oldExpression,	std::unique_ptr<
 }
 
 QueryCompareExpression::QueryCompareExpression(std::unique_ptr<QueryExpression> lhs,
-															   std::unique_ptr<QueryExpression> rhs,
-															   CompareOperator op)
+											   std::unique_ptr<QueryExpression> rhs,
+											   CompareOperator op)
 	: lhs(std::move(lhs)), rhs(std::move(rhs)),	op(op) {
 
 }

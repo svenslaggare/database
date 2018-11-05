@@ -5,7 +5,6 @@
 #include "table.h"
 #include "database_engine.h"
 #include "helpers.h"
-#include "query_expressions/internal_expressions.h"
 
 Query createQuery(std::unique_ptr<QueryOperation> operation) {
 	std::vector<std::unique_ptr<QueryOperation>> operations;

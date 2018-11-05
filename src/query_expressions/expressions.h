@@ -64,8 +64,7 @@ struct QueryAndExpression : public QueryBoolExpression {
 	std::unique_ptr<QueryBoolExpression> lhs;
 	std::unique_ptr<QueryBoolExpression> rhs;
 
-	QueryAndExpression(std::unique_ptr<QueryBoolExpression> lhs,
-							   std::unique_ptr<QueryBoolExpression> rhs);
+	QueryAndExpression(std::unique_ptr<QueryBoolExpression> lhs, std::unique_ptr<QueryBoolExpression> rhs);
 
 	virtual void accept(QueryExpressionVisitor& visitor, QueryExpression* parent) override;
 	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) override;
@@ -80,8 +79,8 @@ struct QueryCompareExpression : public QueryBoolExpression {
 	CompareOperator op;
 
 	QueryCompareExpression(std::unique_ptr<QueryExpression> lhs,
-								   std::unique_ptr<QueryExpression> rhs,
-								   CompareOperator op);
+		   				   std::unique_ptr<QueryExpression> rhs,
+		   				   CompareOperator op);
 
 	virtual void accept(QueryExpressionVisitor& visitor, QueryExpression* parent) override;
 	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) override;

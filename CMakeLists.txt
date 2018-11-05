@@ -18,6 +18,23 @@ set(SOURCE_FILES
         src/common.cpp
         src/common.h
         src/helpers.cpp
-        src/helpers.h src/query_expressions/expressions.cpp src/query_expressions/expressions.h src/query_expressions/visitor.cpp src/query_expressions/visitor.h src/query_expressions/internal_expressions.cpp src/query_expressions/internal_expressions.cpp src/query_expressions/internal_expressions.h src/query_expressions/optimizer.cpp src/query_expressions/optimizer.h src/query_expressions/evaluator.cpp src/query_expressions/evaluator.h src/query_expressions/evaluator.cpp src/query_expressions/evaluator.h src/query_expressions/helpers.cpp src/query_expressions/helpers.h src/execution/operation_visitor.cpp src/execution/operation_visitor.cpp src/execution/operation_visitor.h src/execution/executor.cpp src/execution/executor.h src/query_expressions/compiler.cpp src/query_expressions/compiler.h)
+        src/helpers.h
+        src/query_expressions/expressions.cpp
+        src/query_expressions/expressions.h
+        src/query_expressions/visitor.cpp
+        src/query_expressions/visitor.h
+        src/query_expressions/evaluator.cpp
+        src/query_expressions/evaluator.h
+        src/query_expressions/evaluator.cpp
+        src/query_expressions/evaluator.h
+        src/query_expressions/helpers.cpp
+        src/query_expressions/helpers.h
+        src/execution/operation_visitor.cpp
+        src/execution/operation_visitor.cpp
+        src/execution/operation_visitor.h
+        src/execution/executor.cpp
+        src/execution/executor.h
+        src/query_expressions/compiler.cpp
+        src/query_expressions/compiler.h)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)
