@@ -6,7 +6,7 @@
 #include "helpers.h"
 
 struct ColumnStorage;
-struct Table;
+class Table;
 struct ExpressionIR;
 
 /**
@@ -22,6 +22,8 @@ struct ExpressionExecutionEngine {
 	std::stack<QueryValue, std::vector<QueryValue>> evaluationStack;
 
 	explicit ExpressionExecutionEngine(Table& table);
+
+	void execute(std::size_t rowIndex);
 };
 
 /**

@@ -35,6 +35,6 @@ set(SOURCE_FILES
         src/execution/executor.cpp
         src/execution/executor.h
         src/query_expressions/compiler.cpp
-        src/query_expressions/compiler.h src/execution/select_operation.cpp src/execution/select_operation.h)
+        src/query_expressions/compiler.h src/execution/select_operation.cpp src/execution/select_operation.h src/execution/helpers.cpp src/execution/helpers.h)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)

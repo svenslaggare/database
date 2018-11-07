@@ -2,6 +2,14 @@
 #include "../column_storage.h"
 #include "helpers.h"
 
+void ExpressionExecutionEngine::execute(std::size_t rowIndex) {
+	currentRowIndex = rowIndex;
+
+	for (auto& instruction : instructions) {
+		instruction->execute(*this);
+	}
+}
+
 QueryValueExpressionIR::QueryValueExpressionIR(QueryValue value)
 	: value(value) {
 
