@@ -8,12 +8,3 @@ QueryValue QueryExpressionHelpers::getValueForColumn(const ColumnStorage& storag
 
 	return handleGenericTypeResult(QueryValue, storage.type, handleForType);
 }
-
-Row QueryExpressionHelpers::getRow(const Table& table, std::size_t rowIndex) {
-	std::unordered_map<std::string, QueryValue> rowColumns;
-	for (auto& column : table.schema().columns) {
-		rowColumns[column.name] = getValueForColumn(table.getColumn(column.name), rowIndex);
-	}
-
-	return Row(std::move(rowColumns));
-}

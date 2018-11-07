@@ -1,9 +1,8 @@
 #include "compiler.h"
-#include "../column_storage.h"
 #include "helpers.h"
 
-QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(Table& table, ExpressionExecutionEngine& executionEngine)
-	: table(table), executionEngine(executionEngine) {
+QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(Table& table, ExpressionExecutionEngine& executionEngine, bool optimize)
+	: table(table), executionEngine(executionEngine), optimize(optimize) {
 
 }
 
@@ -82,42 +81,47 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 	auto lhsValue = dynamic_cast<QueryValueExpressionIR*>(lhs.get());
 	auto lhsColumn = dynamic_cast<ColumnReferenceExpressionIR*>(lhs.get());
 
-	if (lhsValue != nullptr && rhsColumn != nullptr) {
-		executionEngine.removeLast();
-		executionEngine.removeLast();
+	if (optimize) {
+		if (lhsValue != nullptr && rhsColumn != nullptr) {
+			executionEngine.removeLast();
+			executionEngine.removeLast();
 
-		auto handleForType = [&](auto dummy) {
-			using Type = decltype(dummy);
-			executionEngine.addInstruction(std::make_unique<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>>(
-				lhsValue->value.getValue<Type>(),
+			auto handleForType = [&](auto dummy) {
+				using Type = decltype(dummy);
+				executionEngine.addInstruction(std::make_unique<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>>(
+					lhsValue->value.getValue<Type>(),
+					rhsColumn->columnSlot,
+					expression->op));
+			};
+
+			handleGenericType(lhsValue->value.type, handleForType);
+			return;
+		} else if (lhsColumn != nullptr && rhsValue != nullptr) {
+			executionEngine.removeLast();
+			executionEngine.removeLast();
+
+			auto handleForType = [&](auto dummy) {
+				using Type = decltype(dummy);
+				executionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>>(
+					lhsColumn->columnSlot,
+					rhsValue->value.getValue<Type>(),
+					expression->op));
+			};
+
+			handleGenericType(rhsValue->value.type, handleForType);
+			return;
+		} else if (lhsColumn != nullptr && rhsColumn != nullptr) {
+			executionEngine.removeLast();
+			executionEngine.removeLast();
+			executionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightColumnIR>(
+				lhsColumn->columnSlot,
 				rhsColumn->columnSlot,
 				expression->op));
-		};
-
-		handleGenericType(lhsValue->value.type, handleForType);
-	} else if (lhsColumn != nullptr && rhsValue != nullptr) {
-		executionEngine.removeLast();
-		executionEngine.removeLast();
-
-		auto handleForType = [&](auto dummy) {
-			using Type = decltype(dummy);
-			executionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>>(
-				lhsColumn->columnSlot,
-				rhsValue->value.getValue<Type>(),
-				expression->op));
-		};
-
-		handleGenericType(rhsValue->value.type, handleForType);
-	} else if (lhsColumn != nullptr && rhsColumn != nullptr) {
-		executionEngine.removeLast();
-		executionEngine.removeLast();
-		executionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightColumnIR>(
-			lhsColumn->columnSlot,
-			rhsColumn->columnSlot,
-			expression->op));
-	} else {
-		executionEngine.addInstruction(std::make_unique<CompareExpressionIR>(expression->op));
+			return;
+		}
 	}
+
+	executionEngine.addInstruction(std::make_unique<CompareExpressionIR>(expression->op));
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryMathExpression* expression) {

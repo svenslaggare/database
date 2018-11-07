@@ -104,14 +104,14 @@ void SelectOperationExecutor::execute() {
 		reducedColumns.tryReduce(operation->projections, table);
 	}
 
-	// First, try the optimized executors.
+	// First, try the optimized executors
 	for (auto& executor : executors) {
 		if (executor()) {
 			return;
 		}
 	}
 
-	// Fallback to default executor
+	// Else fallback to default executor
 	if (reducedColumns.columns.empty()) {
 		for (std::size_t rowIndex = 0; rowIndex < table.numRows(); rowIndex++) {
 			filterExecutionEngine.execute(rowIndex);

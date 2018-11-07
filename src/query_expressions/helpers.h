@@ -41,5 +41,4 @@ namespace QueryExpressionHelpers {
 	}
 
 	QueryValue getValueForColumn(const ColumnStorage& storage, std::size_t rowIndex);
-	Row getRow(const Table& table, std::size_t rowIndex);
 }

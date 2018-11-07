@@ -53,15 +53,6 @@ struct QueryUpdateOperation : public QueryOperation {
 };
 
 /**
- * Represents a database row
- */
-struct Row {
-	std::unordered_map<std::string, QueryValue> columns;
-
-	explicit Row(std::unordered_map<std::string, QueryValue> columns);
-};
-
-/**
  * Represents a database query
  */
 struct Query {

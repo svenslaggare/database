@@ -3,7 +3,6 @@
 #include <unordered_map>
 
 #include "visitor.h"
-#include "helpers.h"
 #include "execution.h"
 
 /**
@@ -13,8 +12,9 @@ struct QueryExpressionCompilerVisitor : public QueryExpressionVisitor {
 	Table& table;
 	ExpressionExecutionEngine& executionEngine;
 	std::stack<ColumnType> typeEvaluationStack;
+	bool optimize;
 
-	explicit QueryExpressionCompilerVisitor(Table& table, ExpressionExecutionEngine& executionEngine);
+	explicit QueryExpressionCompilerVisitor(Table& table, ExpressionExecutionEngine& executionEngine, bool optimize = true);
 
 	void compile(QueryExpression* rootExpression);
 

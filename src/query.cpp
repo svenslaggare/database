@@ -1,11 +1,6 @@
 #include "query.h"
 #include "execution/operation_visitor.h"
 
-Row::Row(std::unordered_map<std::string, QueryValue> columns)
-	: columns(std::move(columns)) {
-
-}
-
 QuerySelectOperation::QuerySelectOperation(std::string table,
 										   std::vector<std::unique_ptr<QueryExpression>> projection,
 										   std::unique_ptr<QueryExpression> filter)
