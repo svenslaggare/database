@@ -24,7 +24,7 @@ void ExecutorHelpers::addRowToResult(std::vector<std::unique_ptr<ExpressionExecu
 	for (auto& projection : projections) {
 		projection->execute(rowIndex);
 
-		auto resultValue = projection->evaluationStack.top();
+		auto resultValue = projection->popEvaluation();
 
 		auto& resultStorage = result.columns[projectionIndex];
 		auto handleForType = [&](auto dummy) {
@@ -34,7 +34,6 @@ void ExecutorHelpers::addRowToResult(std::vector<std::unique_ptr<ExpressionExecu
 
 		handleGenericType(resultValue.type, handleForType);
 
-		projection->evaluationStack.pop();
 		projectionIndex++;
 	}
 }

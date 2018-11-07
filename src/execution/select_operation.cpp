@@ -15,8 +15,8 @@ SelectOperationExecutor::SelectOperationExecutor(Table& table,
 	  optimize(optimize) {
 
 	executors.emplace_back([this]() {
-		if (this->filterExecutionEngine.instructions.size() == 1 && !reducedColumns.columns.empty()) {
-			auto firstInstruction = this->filterExecutionEngine.instructions.front().get();
+		if (this->filterExecutionEngine.instructions().size() == 1 && !reducedColumns.columns.empty()) {
+			auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
 			if (auto instruction = dynamic_cast<QueryValueExpressionIR*>(firstInstruction)) {
 				auto value = instruction->value.getValue<bool>();
 				if (value) {
@@ -44,13 +44,13 @@ SelectOperationExecutor::SelectOperationExecutor(Table& table,
 
 	if (optimize) {
 		executors.emplace_back([this]() {
-			if (this->filterExecutionEngine.instructions.size() == 1 && !reducedColumns.columns.empty()) {
-				auto firstInstruction = this->filterExecutionEngine.instructions.front().get();
+			if (this->filterExecutionEngine.instructions().size() == 1 && !reducedColumns.columns.empty()) {
+				auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
 
 				return anyGenericType([&](auto dummy) {
 					using Type = decltype(dummy);
 					if (auto instruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(firstInstruction)) {
-						auto& rhsColumn = *(this->filterExecutionEngine.slottedColumnStorage[instruction->rhs]);
+						auto& rhsColumn = *(this->filterExecutionEngine.getStorage(instruction->rhs));
 						auto& rhsColumnValues = rhsColumn.template getUnderlyingStorage<Type>();
 
 						for (std::size_t rowIndex = 0; rowIndex < rhsColumnValues.size(); rowIndex++) {
@@ -70,12 +70,12 @@ SelectOperationExecutor::SelectOperationExecutor(Table& table,
 		});
 
 		executors.emplace_back([this]() {
-			if (this->filterExecutionEngine.instructions.size() == 1 && !reducedColumns.columns.empty()) {
-				auto firstInstruction = this->filterExecutionEngine.instructions.front().get();
+			if (this->filterExecutionEngine.instructions().size() == 1 && !reducedColumns.columns.empty()) {
+				auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
 
 				if (auto instruction = dynamic_cast<CompareExpressionLeftColumnRightColumnIR*>(firstInstruction)) {
-					auto& lhsColumn = *this->filterExecutionEngine.slottedColumnStorage[instruction->lhs];
-					auto& rhsColumn = *this->filterExecutionEngine.slottedColumnStorage[instruction->rhs];
+					auto& lhsColumn = *this->filterExecutionEngine.getStorage(instruction->lhs);
+					auto& rhsColumn = *this->filterExecutionEngine.getStorage(instruction->rhs);
 
 					auto handleForType = [&](auto dummy) {
 						using Type = decltype(dummy);
@@ -116,21 +116,17 @@ void SelectOperationExecutor::execute() {
 		for (std::size_t rowIndex = 0; rowIndex < table.numRows(); rowIndex++) {
 			filterExecutionEngine.execute(rowIndex);
 
-			if (filterExecutionEngine.evaluationStack.top().getValue<bool>()) {
+			if (filterExecutionEngine.popEvaluation().getValue<bool>()) {
 				ExecutorHelpers::addRowToResult(projectionExecutionEngines, result, rowIndex);
 			}
-
-			filterExecutionEngine.evaluationStack.pop();
 		}
 	} else {
 		for (std::size_t rowIndex = 0; rowIndex < table.numRows(); rowIndex++) {
 			filterExecutionEngine.execute(rowIndex);
 
-			if (filterExecutionEngine.evaluationStack.top().getValue<bool>()) {
+			if (filterExecutionEngine.popEvaluation().getValue<bool>()) {
 				ExecutorHelpers::addRowToResult(reducedColumns.storage, result, rowIndex);
 			}
-
-			filterExecutionEngine.evaluationStack.pop();
 		}
 	}
 }

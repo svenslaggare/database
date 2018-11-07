@@ -25,14 +25,14 @@ void OperationExecutorVisitor::visit(QuerySelectOperation* operation) {
 
 	std::vector<std::unique_ptr<ExpressionExecutionEngine>> projectionExecutionEngines;
 	for (auto& projection : operation->projections) {
-		projectionExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>(table));
+		projectionExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>());
 		QueryExpressionCompilerVisitor expressionCompilerVisitor(table, *projectionExecutionEngines.back());
 		expressionCompilerVisitor.compile(projection.get());
 
 		result.columns.emplace_back(expressionCompilerVisitor.typeEvaluationStack.top());
 	}
 
-	ExpressionExecutionEngine filterExecutionEngine(table);
+	ExpressionExecutionEngine filterExecutionEngine;
 	QueryExpressionCompilerVisitor expressionCompilerVisitor(table, filterExecutionEngine);
 	expressionCompilerVisitor.compile(rootExpression.get());
 

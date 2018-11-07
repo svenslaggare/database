@@ -38,11 +38,11 @@ int main() {
 	));
 
 	std::vector<std::unique_ptr<QueryExpression>> projections;
-//	projections.emplace_back(std::make_unique<QueryColumnReferenceExpression>("x"));
-	projections.emplace_back(std::make_unique<QueryMathExpression>(
-		std::make_unique<QueryColumnReferenceExpression>("x"),
-	    std::make_unique<QueryValueExpression>(QueryValue(10)),
-	    MathOperator::Add));
+	projections.emplace_back(std::make_unique<QueryColumnReferenceExpression>("x"));
+//	projections.emplace_back(std::make_unique<QueryMathExpression>(
+//		std::make_unique<QueryColumnReferenceExpression>("x"),
+//	    std::make_unique<QueryValueExpression>(QueryValue(10)),
+//	    MathOperator::Add));
 
 	projections.emplace_back(std::make_unique<QueryColumnReferenceExpression>("y"));
 

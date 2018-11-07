@@ -2,118 +2,6 @@
 #include "../column_storage.h"
 #include "helpers.h"
 
-void ExpressionExecutionEngine::execute(std::size_t rowIndex) {
-	currentRowIndex = rowIndex;
-
-	for (auto& instruction : instructions) {
-		instruction->execute(*this);
-	}
-}
-
-QueryValueExpressionIR::QueryValueExpressionIR(QueryValue value)
-	: value(value) {
-
-}
-
-void QueryValueExpressionIR::execute(ExpressionExecutionEngine& executionEngine) {
-	executionEngine.evaluationStack.push(value);
-}
-
-ColumnReferenceExpressionIR::ColumnReferenceExpressionIR(std::size_t columnSlot)
-	: columnSlot(columnSlot) {
-
-}
-
-void ColumnReferenceExpressionIR::execute(ExpressionExecutionEngine& executionEngine) {
-	executionEngine.evaluationStack.push(QueryExpressionHelpers::getValueForColumn(
-		*executionEngine.slottedColumnStorage[columnSlot],
-		executionEngine.currentRowIndex));
-}
-
-CompareExpressionIR::CompareExpressionIR(CompareOperator op)
-	: op(op) {
-
-}
-
-void CompareExpressionIR::execute(ExpressionExecutionEngine& executionEngine) {
-	auto& evaluationStack = executionEngine.evaluationStack;
-
-	auto op2 = std::move(evaluationStack.top());
-	executionEngine.evaluationStack.pop();
-
-	auto op1 = std::move(evaluationStack.top());
-	executionEngine.evaluationStack.pop();
-
-	auto handleForType = [&](auto dummy) {
-		using Type = decltype(dummy);
-		auto op1Value = op1.getValue<Type>();
-		auto op2Value = op2.getValue<Type>();
-		evaluationStack.push(QueryValue(QueryExpressionHelpers::compare(op, op1Value, op2Value)));
-	};
-
-	handleGenericType(op1.type, handleForType);
-}
-
-void AndExpressionIR::execute(ExpressionExecutionEngine& executionEngine) {
-	auto& evaluationStack = executionEngine.evaluationStack;
-
-	auto op2 = std::move(evaluationStack.top());
-	executionEngine.evaluationStack.pop();
-
-	auto op1 = std::move(evaluationStack.top());
-	executionEngine.evaluationStack.pop();
-
-	auto op1Value = op1.getValue<bool>();
-	auto op2Value = op2.getValue<bool>();
-	evaluationStack.push(QueryValue(op1Value && op2Value));
-}
-
-MathOperationExpressionIR::MathOperationExpressionIR(MathOperator op)
-	: op(op) {
-
-}
-
-void MathOperationExpressionIR::execute(ExpressionExecutionEngine& executionEngine) {
-	auto& evaluationStack = executionEngine.evaluationStack;
-
-	auto op2 = std::move(evaluationStack.top());
-	executionEngine.evaluationStack.pop();
-
-	auto op1 = std::move(evaluationStack.top());
-	executionEngine.evaluationStack.pop();
-
-	auto handleForType = [&](auto dummy) {
-		using Type = decltype(dummy);
-		auto op1Value = op1.getValue<Type>();
-		auto op2Value = op2.getValue<Type>();
-		evaluationStack.push(QueryValue(QueryExpressionHelpers::apply(op, op1Value, op2Value)));
-	};
-
-	handleGenericType(op1.type, handleForType);
-}
-
-CompareExpressionLeftColumnRightColumnIR::CompareExpressionLeftColumnRightColumnIR(std::size_t lhs, std::size_t rhs, CompareOperator op)
-	: lhs(lhs), rhs(rhs), op(op) {
-
-}
-
-void CompareExpressionLeftColumnRightColumnIR::execute(ExpressionExecutionEngine& executionEngine) {
-	auto& lhsColumn = executionEngine.slottedColumnStorage[lhs];
-
-	auto handleForType = [&](auto dummy) {
-		using Type = decltype(dummy);
-		Type lhsValue = lhsColumn->getUnderlyingStorage<Type>()[executionEngine.currentRowIndex];
-		Type rhsValue = executionEngine.slottedColumnStorage[rhs]->getUnderlyingStorage<Type>()[executionEngine.currentRowIndex];
-		executionEngine.evaluationStack.push(QueryValue(QueryExpressionHelpers::compare(op, lhsValue, rhsValue)));
-	};
-
-	handleGenericType(lhsColumn->type, handleForType);
-}
-
-ExpressionExecutionEngine::ExpressionExecutionEngine(Table& table) {
-
-}
-
 QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(Table& table, ExpressionExecutionEngine& executionEngine)
 	: table(table), executionEngine(executionEngine) {
 
@@ -122,10 +10,7 @@ QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(Table& table, Exp
 void QueryExpressionCompilerVisitor::compile(QueryExpression* rootExpression) {
 	rootExpression->accept(*this, nullptr);
 
-	executionEngine.slottedColumnStorage.resize(executionEngine.columnNameToSlot.size());
-	for (auto& column : executionEngine.columnNameToSlot) {
-		executionEngine.slottedColumnStorage[column.second] = &table.getColumn(column.first);
-	}
+	executionEngine.fillSlots(table);
 
 	if (typeEvaluationStack.size() != 1) {
 		throw std::runtime_error("Expected one value on the stack.");
@@ -137,18 +22,12 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryRootExp
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryColumnReferenceExpression* expression) {
-	if (executionEngine.columnNameToSlot.count(expression->name) == 0) {
-		executionEngine.columnNameToSlot[expression->name] = nextColumnSlot++;
-	}
-
-	executionEngine.instructions.push_back(std::make_unique<ColumnReferenceExpressionIR>(
-		executionEngine.columnNameToSlot[expression->name]));
-
+	executionEngine.addInstruction(std::make_unique<ColumnReferenceExpressionIR>(executionEngine.getSlot(expression->name)));
 	typeEvaluationStack.push(table.getColumn(expression->name).type);
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryValueExpression* expression) {
-	executionEngine.instructions.push_back(std::make_unique<QueryValueExpressionIR>(expression->value));
+	executionEngine.addInstruction(std::make_unique<QueryValueExpressionIR>(expression->value));
 	typeEvaluationStack.push(expression->value.type);
 }
 
@@ -174,7 +53,7 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryAndExpr
 		throw std::runtime_error("Expected bool type.");
 	}
 
-	executionEngine.instructions.push_back(std::make_unique<AndExpressionIR>());
+	executionEngine.addInstruction(std::make_unique<AndExpressionIR>());
 	typeEvaluationStack.push(ColumnType::Bool);
 }
 
@@ -194,8 +73,7 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 
 	typeEvaluationStack.push(ColumnType::Bool);
 
-	auto& instructions = executionEngine.instructions;
-
+	auto& instructions = executionEngine.instructions();
 	auto& rhs = instructions[instructions.size() - 1];
 	auto& lhs = instructions[instructions.size() - 2];
 
@@ -205,12 +83,12 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 	auto lhsColumn = dynamic_cast<ColumnReferenceExpressionIR*>(lhs.get());
 
 	if (lhsValue != nullptr && rhsColumn != nullptr) {
-		executionEngine.instructions.erase(executionEngine.instructions.end() - 1);
-		executionEngine.instructions.erase(executionEngine.instructions.end() - 1);
+		executionEngine.removeLast();
+		executionEngine.removeLast();
 
 		auto handleForType = [&](auto dummy) {
 			using Type = decltype(dummy);
-			executionEngine.instructions.push_back(std::make_unique<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>>(
+			executionEngine.addInstruction(std::make_unique<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>>(
 				lhsValue->value.getValue<Type>(),
 				rhsColumn->columnSlot,
 				expression->op));
@@ -218,12 +96,12 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 
 		handleGenericType(lhsValue->value.type, handleForType);
 	} else if (lhsColumn != nullptr && rhsValue != nullptr) {
-		executionEngine.instructions.erase(executionEngine.instructions.end() - 1);
-		executionEngine.instructions.erase(executionEngine.instructions.end() - 1);
+		executionEngine.removeLast();
+		executionEngine.removeLast();
 
 		auto handleForType = [&](auto dummy) {
 			using Type = decltype(dummy);
-			executionEngine.instructions.push_back(std::make_unique<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>>(
+			executionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>>(
 				lhsColumn->columnSlot,
 				rhsValue->value.getValue<Type>(),
 				expression->op));
@@ -231,15 +109,14 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 
 		handleGenericType(rhsValue->value.type, handleForType);
 	} else if (lhsColumn != nullptr && rhsColumn != nullptr) {
-		executionEngine.instructions.erase(executionEngine.instructions.end() - 1);
-		executionEngine.instructions.erase(executionEngine.instructions.end() - 1);
-
-		executionEngine.instructions.push_back(std::make_unique<CompareExpressionLeftColumnRightColumnIR>(
+		executionEngine.removeLast();
+		executionEngine.removeLast();
+		executionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightColumnIR>(
 			lhsColumn->columnSlot,
 			rhsColumn->columnSlot,
 			expression->op));
 	} else {
-		executionEngine.instructions.push_back(std::make_unique<CompareExpressionIR>(expression->op));
+		executionEngine.addInstruction(std::make_unique<CompareExpressionIR>(expression->op));
 	}
 }
 
@@ -262,5 +139,5 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryMathExp
 	}
 
 	typeEvaluationStack.push(op1);
-	executionEngine.instructions.push_back(std::make_unique<MathOperationExpressionIR>(expression->op));
+	executionEngine.addInstruction(std::make_unique<MathOperationExpressionIR>(expression->op));
 }
