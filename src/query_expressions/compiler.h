@@ -70,6 +70,16 @@ struct AndExpressionIR : public ExpressionIR {
 };
 
 /**
+ * Represents expression IR for a math operation
+ */
+struct MathOperationExpressionIR : public ExpressionIR {
+	MathOperator op;
+
+	explicit MathOperationExpressionIR(MathOperator op);
+	virtual void execute(ExpressionExecutionEngine& executionEngine) override;
+};
+
+/**
  * Represents expression IR for a comparison with specialized values
  */
 template<typename T>
@@ -139,4 +149,5 @@ struct QueryExpressionCompilerVisitor : public QueryExpressionVisitor {
 	virtual void visit(QueryExpression* parent, QueryValueExpression* expression) override;
 	virtual void visit(QueryExpression* parent, QueryAndExpression* expression) override;
 	virtual void visit(QueryExpression* parent, QueryCompareExpression* expression) override;
+	virtual void visit(QueryExpression* parent, QueryMathExpression* expression) override;
 };

@@ -26,6 +26,20 @@ namespace QueryExpressionHelpers {
 		}
 	}
 
+	template<typename T>
+	T apply(MathOperator op, const T& x, const T& y) {
+		switch (op) {
+			case MathOperator::Add:
+				return x + y;
+			case MathOperator::Sub:
+				return x - y;
+			case MathOperator::Mul:
+				return x * y;
+			case MathOperator::Div:
+				return x / y;
+		}
+	}
+
 	QueryValue getValueForColumn(const ColumnStorage& storage, std::size_t rowIndex);
 	Row getRow(const Table& table, std::size_t rowIndex);
 }

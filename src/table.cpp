@@ -23,7 +23,7 @@ ColumnDefinition::ColumnDefinition(const std::string& name, ColumnType type)
 Table::Table(Schema schema)
 	: mSchema(std::move(schema)) {
 	for (auto& column : mSchema.columns) {
-		mColumnsStorage.emplace(column.name, column);
+		mColumnsStorage.emplace(column.name, ColumnStorage(column));
 	}
 
 	for (auto& column : mSchema.columns) {

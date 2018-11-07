@@ -22,10 +22,13 @@ struct QueryOperation {
  */
 struct QuerySelectOperation : public QueryOperation {
 	std::string table;
-	std::vector<std::string> columns;
+	std::vector<std::unique_ptr<QueryExpression>> projections;
 	std::unique_ptr<QueryExpression> filter;
 
-	QuerySelectOperation(std::string table,	std::vector<std::string> columns, std::unique_ptr<QueryExpression> filter = {});
+	QuerySelectOperation(std::string table,
+						 std::vector<std::unique_ptr<QueryExpression>> projection,
+						 std::unique_ptr<QueryExpression> filter = {});
+
 	virtual void accept(QueryOperationVisitor& visitor) override;
 };
 
@@ -75,6 +78,11 @@ struct QueryResult {
 
 	template<typename T>
 	const UnderlyingColumnStorage<T>& getColumn(std::size_t index) const {
-		return columns.at(index).getUnderlyingStorage<T>();
+		auto& column = columns.at(index);
+		if (ColumnTypeHelpers::getType<T>() != column.type) {
+			throw std::runtime_error("Wrong type.");
+		}
+
+		return column.getUnderlyingStorage<T>();
 	}
 };

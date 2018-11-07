@@ -16,7 +16,7 @@ enum class ColumnType {
 /**
  * Helper functions for database column types
  */
-namespace DatabaseColumnTypeHelpers {
+namespace ColumnTypeHelpers {
 	template<typename T>
 	inline ColumnType getType() {
 		throw std::runtime_error("Not implemented.");
@@ -81,7 +81,7 @@ struct QueryValue {
 
 	template<typename T>
 	T getValue() {
-		if (type != DatabaseColumnTypeHelpers::getType<T>()) {
+		if (type != ColumnTypeHelpers::getType<T>()) {
 			throw std::runtime_error("Wrong type.");
 		}
 
@@ -90,7 +90,7 @@ struct QueryValue {
 
 	template<typename T>
 	T getValue() const {
-		if (type != DatabaseColumnTypeHelpers::getType<T>()) {
+		if (type != ColumnTypeHelpers::getType<T>()) {
 			throw std::runtime_error("Wrong type.");
 		}
 
@@ -109,4 +109,14 @@ enum class CompareOperator {
 	LessThanOrEqual,
 	GreaterThan,
 	GreaterThanOrEqual
+};
+
+/**
+ * The math operators
+ */
+enum class MathOperator {
+	Add,
+	Sub,
+	Mul,
+	Div
 };

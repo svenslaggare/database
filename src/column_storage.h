@@ -15,7 +15,8 @@ struct ColumnStorage {
 	ColumnType type;
 	std::unique_ptr<std::uint8_t[]> underlyingStorage;
 
-	ColumnStorage(const ColumnDefinition& column);
+	explicit ColumnStorage(ColumnType type);
+	explicit ColumnStorage(const ColumnDefinition& column);
 
 	std::size_t size() const;
 

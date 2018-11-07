@@ -6,8 +6,10 @@ Row::Row(std::unordered_map<std::string, QueryValue> columns)
 
 }
 
-QuerySelectOperation::QuerySelectOperation(std::string table, std::vector<std::string> columns,	 std::unique_ptr<QueryExpression> filter)
-	: table(std::move(table)), columns(std::move(columns)), filter(std::move(filter)) {
+QuerySelectOperation::QuerySelectOperation(std::string table,
+										   std::vector<std::unique_ptr<QueryExpression>> projection,
+										   std::unique_ptr<QueryExpression> filter)
+	: table(std::move(table)), projections(std::move(projection)), filter(std::move(filter)) {
 
 }
 

@@ -7,7 +7,7 @@
 struct QueryExpressionVisitor;
 
 /**
- * Represents a database query expression
+ * Represents a query expression
  */
 struct QueryExpression {
 	virtual ~QueryExpression() = default;
@@ -17,7 +17,7 @@ struct QueryExpression {
 };
 
 /**
- * Represents a root database query expression
+ * Represents a root query expression
  */
 struct QueryRootExpression : public QueryExpression {
 	std::unique_ptr<QueryExpression> root;
@@ -29,7 +29,7 @@ struct QueryRootExpression : public QueryExpression {
 };
 
 /**
- * Represents a database query expression for a column reference
+ * Represents a query expression for a column reference
  */
 struct QueryColumnReferenceExpression : public QueryExpression {
 	std::string name;
@@ -40,7 +40,7 @@ struct QueryColumnReferenceExpression : public QueryExpression {
 };
 
 /**
- * Represents a database query expression for a value
+ * Represents a query expression for a value
  */
 struct QueryValueExpression : public QueryExpression {
 	QueryValue value;
@@ -51,14 +51,14 @@ struct QueryValueExpression : public QueryExpression {
 };
 
 /**
- * Represents a bool value database query expression
+ * Represents a bool value query expression
  */
 struct QueryBoolExpression : public QueryExpression {
 
 };
 
 /**
- * Represents an and database query expression
+ * Represents and query expression
  */
 struct QueryAndExpression : public QueryBoolExpression {
 	std::unique_ptr<QueryBoolExpression> lhs;
@@ -71,7 +71,7 @@ struct QueryAndExpression : public QueryBoolExpression {
 };
 
 /**
- * Represents a database query compare expression
+ * Represents a query compare expression
  */
 struct QueryCompareExpression : public QueryBoolExpression {
 	std::unique_ptr<QueryExpression> lhs;
@@ -85,3 +85,26 @@ struct QueryCompareExpression : public QueryBoolExpression {
 	virtual void accept(QueryExpressionVisitor& visitor, QueryExpression* parent) override;
 	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) override;
 };
+
+/**
+ * Represents a math query expression
+ */
+struct QueryMathExpression : public QueryExpression {
+	std::unique_ptr<QueryExpression> lhs;
+	std::unique_ptr<QueryExpression> rhs;
+	MathOperator op;
+
+	explicit QueryMathExpression(std::unique_ptr<QueryExpression> lhs,
+								 std::unique_ptr<QueryExpression> rhs,
+								 MathOperator op);
+
+	virtual void accept(QueryExpressionVisitor& visitor, QueryExpression* parent) override;
+	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) override;
+};
+
+/**
+ * Helper functions for query expressions
+ */
+namespace QueryExpressionHelpers {
+	std::vector<std::unique_ptr<QueryExpression>> createColumnReferences(std::initializer_list<std::string> columns);
+}

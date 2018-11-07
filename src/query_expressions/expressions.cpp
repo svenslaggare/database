@@ -89,3 +89,28 @@ void QueryCompareExpression::update(QueryExpression* oldExpression, std::unique_
 
 	throw std::runtime_error("old expression not sub-expression.");
 }
+
+std::vector<std::unique_ptr<QueryExpression>> QueryExpressionHelpers::createColumnReferences(std::initializer_list<std::string> columns) {
+	std::vector<std::unique_ptr<QueryExpression>> references;
+
+	for (auto& column : columns) {
+		references.emplace_back(std::make_unique<QueryColumnReferenceExpression>(column));
+	}
+
+	return references;
+}
+
+QueryMathExpression::QueryMathExpression(std::unique_ptr<QueryExpression> lhs,
+										 std::unique_ptr<QueryExpression> rhs,
+										 MathOperator op)
+	: lhs(std::move(lhs)), rhs(std::move(rhs)),	op(op) {
+
+}
+
+void QueryMathExpression::accept(QueryExpressionVisitor& visitor, QueryExpression* parent) {
+	visitor.visit(parent, this);
+}
+
+void QueryMathExpression::update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) {
+
+}

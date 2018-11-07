@@ -60,6 +60,30 @@ void AndExpressionIR::execute(ExpressionExecutionEngine& executionEngine) {
 	evaluationStack.push(QueryValue(op1Value && op2Value));
 }
 
+MathOperationExpressionIR::MathOperationExpressionIR(MathOperator op)
+	: op(op) {
+
+}
+
+void MathOperationExpressionIR::execute(ExpressionExecutionEngine& executionEngine) {
+	auto& evaluationStack = executionEngine.evaluationStack;
+
+	auto op2 = std::move(evaluationStack.top());
+	executionEngine.evaluationStack.pop();
+
+	auto op1 = std::move(evaluationStack.top());
+	executionEngine.evaluationStack.pop();
+
+	auto handleForType = [&](auto dummy) {
+		using Type = decltype(dummy);
+		auto op1Value = op1.getValue<Type>();
+		auto op2Value = op2.getValue<Type>();
+		evaluationStack.push(QueryValue(QueryExpressionHelpers::apply(op, op1Value, op2Value)));
+	};
+
+	handleGenericType(op1.type, handleForType);
+}
+
 CompareExpressionLeftColumnRightColumnIR::CompareExpressionLeftColumnRightColumnIR(std::size_t lhs, std::size_t rhs, CompareOperator op)
 	: lhs(lhs), rhs(rhs), op(op) {
 
@@ -209,4 +233,26 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 	} else {
 		executionEngine.instructions.push_back(std::make_unique<CompareExpressionIR>(expression->op));
 	}
+}
+
+void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryMathExpression* expression) {
+	expression->lhs->accept(*this, expression);
+	expression->rhs->accept(*this, expression);
+
+	auto op2 = typeEvaluationStack.top();
+	typeEvaluationStack.pop();
+
+	auto op1 = typeEvaluationStack.top();
+	typeEvaluationStack.pop();
+
+	if (op1 != op2) {
+		throw std::runtime_error("Different types.");
+	}
+
+	if (!(op1 == ColumnType::Float32 || op1 == ColumnType::Int32)) {
+		throw std::runtime_error("Only Int32 and Float32 supported.");
+	}
+
+	typeEvaluationStack.push(op1);
+	executionEngine.instructions.push_back(std::make_unique<MathOperationExpressionIR>(expression->op));
 }
