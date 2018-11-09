@@ -4,7 +4,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "column_storage.h"
+#include "storage.h"
 #include "common.h"
 
 /**

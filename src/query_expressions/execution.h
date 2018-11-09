@@ -22,6 +22,7 @@ private:
 	std::size_t mNextColumnSlot = 0;
 
 	std::vector<std::unique_ptr<ExpressionIR>> mInstructions;
+	ColumnType mExpressionType;
 
 	std::size_t mCurrentRowIndex = 0;
 	EvaluationStack mEvaluationStack;
@@ -35,6 +36,9 @@ public:
 	std::size_t getSlot(const std::string& name);
 
 	void fillSlots(Table& table);
+
+	ColumnType expressionType() const;
+	void setExpressionType(ColumnType type);
 
 	inline std::size_t currentRowIndex() const {
 		return mCurrentRowIndex;

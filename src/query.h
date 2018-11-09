@@ -4,7 +4,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "column_storage.h"
+#include "storage.h"
 #include "query_expressions/expressions.h"
 
 struct QueryOperationVisitor;
@@ -18,16 +18,29 @@ struct QueryOperation {
 };
 
 /**
+ * Represents an ordering clause
+ */
+struct OrderingClause {
+	std::string name;
+	bool ascending;
+
+	OrderingClause() = default;
+	OrderingClause(const std::string& name, bool ascending = false);
+};
+
+/**
  * Represents a select operation
  */
 struct QuerySelectOperation : public QueryOperation {
 	std::string table;
 	std::vector<std::unique_ptr<QueryExpression>> projections;
 	std::unique_ptr<QueryExpression> filter;
+	OrderingClause order;
 
 	QuerySelectOperation(std::string table,
 						 std::vector<std::unique_ptr<QueryExpression>> projection,
-						 std::unique_ptr<QueryExpression> filter = {});
+						 std::unique_ptr<QueryExpression> filter = {},
+						 OrderingClause order = {});
 
 	virtual void accept(QueryOperationVisitor& visitor) override;
 };

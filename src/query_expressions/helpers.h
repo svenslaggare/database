@@ -1,6 +1,6 @@
 #pragma once
 #include "../common.h"
-#include "../column_storage.h"
+#include "../storage.h"
 #include "../table.h"
 #include "../query.h"
 

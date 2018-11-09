@@ -13,8 +13,8 @@ set(SOURCE_FILES
         src/query.h
         src/database_engine.cpp
         src/database_engine.h
-        src/column_storage.cpp
-        src/column_storage.h
+        src/storage.cpp
+        src/storage.h
         src/common.cpp
         src/common.h
         src/helpers.cpp

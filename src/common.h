@@ -70,9 +70,24 @@ inline bool anyType(std::function<bool ()> boolHandle, std::function<bool ()> in
 
 constexpr std::size_t MAX_VALUE_SIZE = std::max(std::max(sizeof(bool), sizeof(std::int32_t)), sizeof(float));
 
+/**
+ * Represents a raw query value
+ */
+struct RawQueryValue {
+	std::uint8_t data[MAX_VALUE_SIZE];
+
+	template<typename T>
+	T getValue() const {
+		return *reinterpret_cast<const T*>(&data);
+	}
+};
+
+/**
+ * Represents a query value
+ */
 struct QueryValue {
 	ColumnType type;
-	std::uint8_t data[MAX_VALUE_SIZE];
+	RawQueryValue data;
 
 	explicit QueryValue();
 	explicit QueryValue(std::int32_t value);
@@ -80,21 +95,12 @@ struct QueryValue {
 	explicit QueryValue(bool value);
 
 	template<typename T>
-	T getValue() {
-		if (type != ColumnTypeHelpers::getType<T>()) {
-			throw std::runtime_error("Wrong type.");
-		}
-
-		return *reinterpret_cast<T*>(&data);
-	}
-
-	template<typename T>
 	T getValue() const {
 		if (type != ColumnTypeHelpers::getType<T>()) {
 			throw std::runtime_error("Wrong type.");
 		}
 
-		return *reinterpret_cast<const T*>(&data);
+		return data.getValue<T>();
 	}
 };
 

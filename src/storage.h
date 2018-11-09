@@ -18,6 +18,8 @@ struct ColumnStorage {
 	explicit ColumnStorage(ColumnType type);
 	explicit ColumnStorage(const ColumnDefinition& column);
 
+	static std::unique_ptr<std::uint8_t[]> createUnderlyingStorage(ColumnType type);
+
 	std::size_t size() const;
 
 	template<typename T>

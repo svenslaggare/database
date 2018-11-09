@@ -33,6 +33,14 @@ void ExpressionExecutionEngine::fillSlots(Table& table) {
 	}
 }
 
+ColumnType ExpressionExecutionEngine::expressionType() const {
+	return mExpressionType;
+}
+
+void ExpressionExecutionEngine::setExpressionType(ColumnType type) {
+	mExpressionType = type;
+}
+
 void ExpressionExecutionEngine::execute(std::size_t rowIndex) {
 	mCurrentRowIndex = rowIndex;
 

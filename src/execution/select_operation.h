@@ -19,7 +19,11 @@ struct SelectOperationExecutor {
 	QueryResult& result;
 	bool optimize;
 
-	ReducedColumns reducedColumns;
+	bool doOrdering = false;
+	std::unique_ptr<ExpressionExecutionEngine> orderExecutionEngine;
+	std::vector<RawQueryValue> orderingData;
+
+	ReducedProjections reducedProjections;
 
 	std::vector<std::function<bool ()>> executors;
 
@@ -30,5 +34,6 @@ struct SelectOperationExecutor {
 							QueryResult& result,
 							bool optimize = true);
 
+	void addForOrdering(std::size_t rowIndex);
 	void execute();
 };

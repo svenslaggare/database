@@ -26,20 +26,20 @@ namespace {
 
 QueryValue::QueryValue()
 	: type(ColumnType::Int32) {
-	setBinaryRepresentation(data, 0);
+	setBinaryRepresentation(data.data, 0);
 }
 
 QueryValue::QueryValue(std::int32_t value)
 	: type(ColumnType::Int32) {
-	setBinaryRepresentation(data, value);
+	setBinaryRepresentation(data.data, value);
 }
 
 QueryValue::QueryValue(float value)
 	: type(ColumnType::Float32) {
-	setBinaryRepresentation(data, value);
+	setBinaryRepresentation(data.data, value);
 }
 
 QueryValue::QueryValue(bool value)
 	: type(ColumnType::Bool) {
-	setBinaryRepresentation(data, value);
+	setBinaryRepresentation(data.data, value);
 }

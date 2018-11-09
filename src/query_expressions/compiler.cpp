@@ -14,6 +14,8 @@ void QueryExpressionCompilerVisitor::compile(QueryExpression* rootExpression) {
 	if (typeEvaluationStack.size() != 1) {
 		throw std::runtime_error("Expected one value on the stack.");
 	}
+
+	executionEngine.setExpressionType(typeEvaluationStack.top());
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryRootExpression* expression) {
