@@ -2,7 +2,7 @@
 #include "execution/operation_visitor.h"
 
 OrderingClause::OrderingClause(const std::string& name, bool ascending)
-	: name(name), ascending(ascending) {
+	: name(name), descending(ascending) {
 
 }
 

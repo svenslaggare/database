@@ -35,7 +35,7 @@ void OperationExecutorVisitor::visit(QuerySelectOperation* operation) {
 		projectionExecutionEngines,
 		filterExecutionEngine,
 		result,
-		true);
+		false);
 
 	executor.execute();
 }

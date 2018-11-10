@@ -42,9 +42,13 @@ namespace ExecutorHelpers {
 	 * Orders the given result
 	 * @param orderDataType The type of ordering column
 	 * @param orderingData The ordering data
+	 * @param descending Indicates if sorted descending
 	 * @param result The result to order
 	 */
-	void orderResult(ColumnType orderDataType, const std::vector<RawQueryValue>& orderingData, QueryResult& result);
+	void orderResult(ColumnType orderDataType,
+					 const std::vector<RawQueryValue>& orderingData,
+					 bool descending,
+					 QueryResult& result);
 }
 
 /**

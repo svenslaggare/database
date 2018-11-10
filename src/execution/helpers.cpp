@@ -61,7 +61,7 @@ void ExecutorHelpers::addRowToResult(std::vector<std::unique_ptr<ExpressionExecu
 	}
 }
 
-void ExecutorHelpers::orderResult(ColumnType orderDataType, const std::vector<RawQueryValue>& orderingData, QueryResult& result) {
+void ExecutorHelpers::orderResult(ColumnType orderDataType, const std::vector<RawQueryValue>& orderingData, bool descending, QueryResult& result) {
 	// Find the indices of the ordering
 	std::vector<std::size_t> sortedIndices;
 	{
@@ -70,15 +70,27 @@ void ExecutorHelpers::orderResult(ColumnType orderDataType, const std::vector<Ra
 			sortedIndices.push_back(i);
 		}
 
-		handleGenericType(orderDataType, [&](auto dummy) -> void {
-			using Type = decltype(dummy);
-			std::sort(
-				sortedIndices.begin(),
-				sortedIndices.end(),
-				[&](std::size_t x, std::size_t y) {
-					return orderingData[x].getValue<Type>() < orderingData[y].getValue<Type>();
-				});
-		});
+		if (descending) {
+			handleGenericType(orderDataType, [&](auto dummy) -> void {
+				using Type = decltype(dummy);
+				std::sort(
+					sortedIndices.begin(),
+					sortedIndices.end(),
+					[&](std::size_t x, std::size_t y) {
+						return orderingData[x].getValue<Type>() > orderingData[y].getValue<Type>();
+					});
+			});
+		} else {
+			handleGenericType(orderDataType, [&](auto dummy) -> void {
+				using Type = decltype(dummy);
+				std::sort(
+					sortedIndices.begin(),
+					sortedIndices.end(),
+					[&](std::size_t x, std::size_t y) {
+						return orderingData[x].getValue<Type>() < orderingData[y].getValue<Type>();
+					});
+			});
+		}
 	}
 
 	// Now update the result

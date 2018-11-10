@@ -27,16 +27,16 @@ struct QueryOperation {
  */
 struct OrderingClause {
 	std::string name;
-	bool ascending;
+	bool descending;
 
 	OrderingClause() = default;
 
 	/**
 	 * Creates a new ordering clause
 	 * @param name The name of the field to order on
-	 * @param ascending Indicates if the ordering is ascending
+	 * @param descending Indicates if the ordering is descending
 	 */
-	explicit OrderingClause(const std::string& name, bool ascending = true);
+	explicit OrderingClause(const std::string& name, bool descending = false);
 };
 
 /**

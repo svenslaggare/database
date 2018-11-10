@@ -30,13 +30,13 @@ private:
 
 	bool hasReducedToOneInstruction() const;
 
+	void addForOrdering(std::size_t rowIndex);
+
 	bool executeNoFilter();
 	bool executeFilterLeftIsColumn();
 	bool executeFilterRightIsColumn();
 	bool executeFilterBothColumn();
 	bool executeDefault();
-
-	void addForOrdering(std::size_t rowIndex);
 public:
 	/**
 	 * Creates a new select operation executor

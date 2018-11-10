@@ -31,6 +31,11 @@ bool SelectOperationExecutor::hasReducedToOneInstruction() const {
 	return this->mFilterExecutionEngine.instructions().size() == 1;
 }
 
+void SelectOperationExecutor::addForOrdering(std::size_t rowIndex) {
+	mOrderExecutionEngine->execute(rowIndex);
+	mOrderingData.push_back(mOrderExecutionEngine->popEvaluation().data);
+}
+
 bool SelectOperationExecutor::executeNoFilter() {
 	if (hasReducedToOneInstruction() && mReducedProjections.allReduced) {
 		auto firstInstruction = this->mFilterExecutionEngine.instructions().front().get();
@@ -183,11 +188,6 @@ bool SelectOperationExecutor::executeDefault() {
 	return true;
 }
 
-void SelectOperationExecutor::addForOrdering(std::size_t rowIndex) {
-	mOrderExecutionEngine->execute(rowIndex);
-	mOrderingData.push_back(mOrderExecutionEngine->popEvaluation().data);
-}
-
 void SelectOperationExecutor::execute() {
 	if (!mOperation->order.name.empty()) {
 		mOrderResult = true;
@@ -210,6 +210,10 @@ void SelectOperationExecutor::execute() {
 	}
 
 	if (mOrderResult) {
-		ExecutorHelpers::orderResult(mOrderExecutionEngine->expressionType(), mOrderingData, mResult);
+		ExecutorHelpers::orderResult(
+			mOrderExecutionEngine->expressionType(),
+			mOrderingData,
+			mOperation->order.descending,
+			mResult);
 	}
 }
