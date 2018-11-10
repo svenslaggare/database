@@ -18,112 +18,169 @@ SelectOperationExecutor::SelectOperationExecutor(Table& table,
 	  result(result),
 	  optimize(optimize) {
 	if (optimize) {
-		executors.emplace_back([this]() {
-			if (this->filterExecutionEngine.instructions().size() == 1 && reducedProjections.allReduced) {
-				auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
-				if (auto instruction = dynamic_cast<QueryValueExpressionIR*>(firstInstruction)) {
-					auto value = instruction->value.getValue<bool>();
-					if (value) {
-						auto reducedIndex = this->reducedProjections.indexOfColumn(this->operation->order.name);
-						if (reducedIndex != -1 || !doOrdering) {
-							std::size_t columnIndex = 0;
-							for (auto& column : this->reducedProjections.columns) {
-								auto& columnDefinition = this->table.schema().getDefinition(column);
-								auto& resultStorage = this->result.columns[columnIndex];
+		executors.emplace_back(std::bind(&SelectOperationExecutor::executeNoFilter, this));
+		executors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterLeftIsColumn, this));
+		executors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterRightIsColumn, this));
+		executors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterBothColumn, this));
+	}
 
-								auto handleForType = [&](auto dummy) {
-									using Type = decltype(dummy);
-									resultStorage.getUnderlyingStorage<Type>() = this->table.getColumnValues<Type>(column);
+	executors.emplace_back(std::bind(&SelectOperationExecutor::executeDefault, this));
+}
 
-									if (doOrdering) {
-										if ((std::size_t)reducedIndex == columnIndex) {
-											for (auto currentValue : resultStorage.getUnderlyingStorage<Type>()) {
-												orderingData.push_back(QueryValue(currentValue).data);
-											}
-										}
-									}
-								};
+bool SelectOperationExecutor::hasReducedToOneInstruction() const {
+	return this->filterExecutionEngine.instructions().size() == 1;
+}
 
-								handleGenericType(columnDefinition.type, handleForType);
-								columnIndex++;
-							}
-						} else {
-							for (std::size_t rowIndex = 0; rowIndex < this->table.numRows(); rowIndex++) {
-								ExecutorHelpers::addRowToResult(this->reducedProjections.storage, this->result, rowIndex);
-								addForOrdering(rowIndex);
-							}
-						}
-					}
+bool SelectOperationExecutor::executeNoFilter() {
+	if (hasReducedToOneInstruction() && reducedProjections.allReduced) {
+		auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
+		if (auto instruction = dynamic_cast<QueryValueExpressionIR*>(firstInstruction)) {
+			auto value = instruction->value.getValue<bool>();
+			if (value) {
+				auto reducedIndex = this->reducedProjections.indexOfColumn(this->operation->order.name);
+				if (reducedIndex != -1 || !doOrdering) {
+					std::size_t columnIndex = 0;
+					for (auto& column : this->reducedProjections.columns) {
+						auto& columnDefinition = this->table.schema().getDefinition(column);
+						auto& resultStorage = this->result.columns[columnIndex];
 
-					return true;
-				}
-			}
-
-			return false;
-		});
-
-		executors.emplace_back([this]() {
-			if (this->filterExecutionEngine.instructions().size() == 1 && reducedProjections.allReduced) {
-				auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
-
-				return anyGenericType([&](auto dummy) {
-					using Type = decltype(dummy);
-					if (auto instruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(firstInstruction)) {
-						auto& rhsColumn = *(this->filterExecutionEngine.getStorage(instruction->rhs));
-						auto& rhsColumnValues = rhsColumn.template getUnderlyingStorage<Type>();
-
-						for (std::size_t rowIndex = 0; rowIndex < rhsColumnValues.size(); rowIndex++) {
-							if (QueryExpressionHelpers::compare<Type>(instruction->op, instruction->lhs, rhsColumnValues[rowIndex])) {
-								ExecutorHelpers::addRowToResult(this->reducedProjections.storage, this->result, rowIndex);
-							}
+						auto handleForType = [&](auto dummy) {
+							using Type = decltype(dummy);
+							resultStorage.getUnderlyingStorage<Type>() = this->table.getColumnValues<Type>(column);
 
 							if (doOrdering) {
-								addForOrdering(rowIndex);
-							}
-						}
-
-						return true;
-					}
-
-					return false;
-				});
-			}
-
-			return false;
-		});
-
-		executors.emplace_back([this]() {
-			if (this->filterExecutionEngine.instructions().size() == 1 && reducedProjections.allReduced) {
-				auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
-
-				if (auto instruction = dynamic_cast<CompareExpressionLeftColumnRightColumnIR*>(firstInstruction)) {
-					auto& lhsColumn = *this->filterExecutionEngine.getStorage(instruction->lhs);
-					auto& rhsColumn = *this->filterExecutionEngine.getStorage(instruction->rhs);
-
-					auto handleForType = [&](auto dummy) {
-						using Type = decltype(dummy);
-						auto& lhsColumnValues = lhsColumn.getUnderlyingStorage<Type>();
-						auto& rhsColumnValues = rhsColumn.getUnderlyingStorage<Type>();
-
-						for (std::size_t rowIndex = 0; rowIndex < lhsColumnValues.size(); rowIndex++) {
-							if (QueryExpressionHelpers::compare<Type>(instruction->op, lhsColumnValues[rowIndex], rhsColumnValues[rowIndex])) {
-								ExecutorHelpers::addRowToResult(this->reducedProjections.storage, this->result, rowIndex);
-
-								if (doOrdering) {
-									addForOrdering(rowIndex);
+								if ((std::size_t)reducedIndex == columnIndex) {
+									for (auto currentValue : resultStorage.getUnderlyingStorage<Type>()) {
+										orderingData.push_back(QueryValue(currentValue).data);
+									}
 								}
 							}
-						}
-					};
+						};
 
-					handleGenericType(lhsColumn.type, handleForType);
-					return true;
+						handleGenericType(columnDefinition.type, handleForType);
+						columnIndex++;
+					}
+				} else {
+					for (std::size_t rowIndex = 0; rowIndex < this->table.numRows(); rowIndex++) {
+						ExecutorHelpers::addRowToResult(this->reducedProjections.storage, this->result, rowIndex);
+						addForOrdering(rowIndex);
+					}
 				}
+			}
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool SelectOperationExecutor::executeFilterLeftIsColumn() {
+	if (hasReducedToOneInstruction() == 1 && reducedProjections.allReduced) {
+		auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
+
+		return anyGenericType([&](auto dummy) {
+			using Type = decltype(dummy);
+			if (auto instruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(firstInstruction)) {
+				auto& lhsColumn = *(this->filterExecutionEngine.getStorage(instruction->lhs));
+				auto& lhsColumnValues = lhsColumn.template getUnderlyingStorage<Type>();
+
+				for (std::size_t rowIndex = 0; rowIndex < lhsColumnValues.size(); rowIndex++) {
+					if (QueryExpressionHelpers::compare<Type>(instruction->op, lhsColumnValues[rowIndex], instruction->rhs)) {
+						ExecutorHelpers::addRowToResult(this->reducedProjections.storage, this->result, rowIndex);
+					}
+
+					if (doOrdering) {
+						addForOrdering(rowIndex);
+					}
+				}
+
+				return true;
 			}
 
 			return false;
 		});
 	}
+
+	return false;
+}
+
+bool SelectOperationExecutor::executeFilterRightIsColumn() {
+	if (hasReducedToOneInstruction() == 1 && reducedProjections.allReduced) {
+		auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
+
+		return anyGenericType([&](auto dummy) {
+			using Type = decltype(dummy);
+			if (auto instruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(firstInstruction)) {
+				auto& rhsColumn = *(this->filterExecutionEngine.getStorage(instruction->rhs));
+				auto& rhsColumnValues = rhsColumn.template getUnderlyingStorage<Type>();
+
+				for (std::size_t rowIndex = 0; rowIndex < rhsColumnValues.size(); rowIndex++) {
+					if (QueryExpressionHelpers::compare<Type>(instruction->op, instruction->lhs, rhsColumnValues[rowIndex])) {
+						ExecutorHelpers::addRowToResult(this->reducedProjections.storage, this->result, rowIndex);
+					}
+
+					if (doOrdering) {
+						addForOrdering(rowIndex);
+					}
+				}
+
+				return true;
+			}
+
+			return false;
+		});
+	}
+
+	return false;
+}
+
+bool SelectOperationExecutor::executeFilterBothColumn() {
+	if (this->filterExecutionEngine.instructions().size() == 1 && reducedProjections.allReduced) {
+		auto firstInstruction = this->filterExecutionEngine.instructions().front().get();
+
+		if (auto instruction = dynamic_cast<CompareExpressionLeftColumnRightColumnIR*>(firstInstruction)) {
+			auto& lhsColumn = *this->filterExecutionEngine.getStorage(instruction->lhs);
+			auto& rhsColumn = *this->filterExecutionEngine.getStorage(instruction->rhs);
+
+			auto handleForType = [&](auto dummy) {
+				using Type = decltype(dummy);
+				auto& lhsColumnValues = lhsColumn.getUnderlyingStorage<Type>();
+				auto& rhsColumnValues = rhsColumn.getUnderlyingStorage<Type>();
+
+				for (std::size_t rowIndex = 0; rowIndex < lhsColumnValues.size(); rowIndex++) {
+					if (QueryExpressionHelpers::compare<Type>(instruction->op, lhsColumnValues[rowIndex], rhsColumnValues[rowIndex])) {
+						ExecutorHelpers::addRowToResult(this->reducedProjections.storage, this->result, rowIndex);
+
+						if (doOrdering) {
+							addForOrdering(rowIndex);
+						}
+					}
+				}
+			};
+
+			handleGenericType(lhsColumn.type, handleForType);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool SelectOperationExecutor::executeDefault() {
+	for (std::size_t rowIndex = 0; rowIndex < table.numRows(); rowIndex++) {
+		filterExecutionEngine.execute(rowIndex);
+
+		if (filterExecutionEngine.popEvaluation().getValue<bool>()) {
+			ExecutorHelpers::addRowToResult(projectionExecutionEngines, reducedProjections.storage, result, rowIndex);
+
+			if (doOrdering) {
+				addForOrdering(rowIndex);
+			}
+		}
+	}
+
+	return true;
 }
 
 void SelectOperationExecutor::addForOrdering(std::size_t rowIndex) {
@@ -140,7 +197,6 @@ void SelectOperationExecutor::execute() {
 
 	reducedProjections.tryReduce(operation->projections, table);
 
-	// First, try the optimized executors
 	bool executed = false;
 	for (auto& executor : executors) {
 		if (executor()) {
@@ -149,19 +205,8 @@ void SelectOperationExecutor::execute() {
 		}
 	}
 
-	// Else fallback to default executor
 	if (!executed) {
-		for (std::size_t rowIndex = 0; rowIndex < table.numRows(); rowIndex++) {
-			filterExecutionEngine.execute(rowIndex);
-
-			if (filterExecutionEngine.popEvaluation().getValue<bool>()) {
-				ExecutorHelpers::addRowToResult(projectionExecutionEngines, reducedProjections.storage, result, rowIndex);
-
-				if (doOrdering) {
-					addForOrdering(rowIndex);
-				}
-			}
-		}
+		throw std::runtime_error("Operation not executed.");
 	}
 
 	if (doOrdering) {

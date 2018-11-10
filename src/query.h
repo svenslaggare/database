@@ -25,7 +25,7 @@ struct OrderingClause {
 	bool ascending;
 
 	OrderingClause() = default;
-	OrderingClause(const std::string& name, bool ascending = false);
+	explicit OrderingClause(const std::string& name, bool ascending = false);
 };
 
 /**

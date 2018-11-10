@@ -55,10 +55,10 @@ int main() {
 //			std::make_unique<QueryColumnReferenceExpression>("y"),
 //			std::make_unique<QueryValueExpression>(QueryValue(35.0f)),
 //			CompareOperator::LessThan)
-//		std::make_unique<QueryCompareExpression>(
-//			std::make_unique<QueryValueExpression>(QueryValue(33)),
-//			std::make_unique<QueryColumnReferenceExpression>("x"),
-//			CompareOperator::GreaterThan)
+		std::make_unique<QueryCompareExpression>(
+			std::make_unique<QueryValueExpression>(QueryValue(33)),
+			std::make_unique<QueryColumnReferenceExpression>("x"),
+			CompareOperator::GreaterThan)
 //		std::make_unique<QueryCompareExpression>(
 //			std::make_unique<QueryColumnReferenceExpression>("y"),
 //			std::make_unique<QueryColumnReferenceExpression>("z"),
@@ -81,14 +81,14 @@ int main() {
 //				std::make_unique<QueryColumnReferenceExpression>("y"),
 //				std::make_unique<QueryValueExpression>(QueryValue(35.0f)),
 //				CompareOperator::LessThan))
-		std::unique_ptr<QueryExpression>()
+//		std::unique_ptr<QueryExpression>()
 //		std::make_unique<QueryValueExpression>(QueryValue(true))
 //		std::make_unique<QueryCompareExpression>(
 //			std::make_unique<QueryColumnReferenceExpression>("y"),
 //			std::make_unique<QueryValueExpression>(QueryValue(350000.0f)),
 //			CompareOperator::LessThan)
 //		,std::make_unique<QueryColumnReferenceExpression>("x")
-		,OrderingClause("x")
+//		,OrderingClause("x")
 	));
 
 	Schema schema(

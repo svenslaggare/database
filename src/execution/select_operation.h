@@ -34,6 +34,14 @@ struct SelectOperationExecutor {
 							QueryResult& result,
 							bool optimize = true);
 
+	bool hasReducedToOneInstruction() const;
+
+	bool executeNoFilter();
+	bool executeFilterLeftIsColumn();
+	bool executeFilterRightIsColumn();
+	bool executeFilterBothColumn();
+	bool executeDefault();
+
 	void addForOrdering(std::size_t rowIndex);
 	void execute();
 };
