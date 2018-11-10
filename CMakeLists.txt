@@ -7,40 +7,36 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 
 set(SOURCE_FILES
-        src/table.cpp
-        src/table.h
-        src/query.cpp
-        src/query.h
-        src/database_engine.cpp
-        src/database_engine.h
-        src/storage.cpp
-        src/storage.h
         src/common.cpp
         src/common.h
-        src/helpers.cpp
-        src/helpers.h
-        src/query_expressions/expressions.cpp
-        src/query_expressions/expressions.h
-        src/query_expressions/visitor.cpp
-        src/query_expressions/visitor.h
-        src/query_expressions/evaluator.cpp
-        src/query_expressions/evaluator.h
-        src/query_expressions/evaluator.cpp
-        src/query_expressions/evaluator.h
-        src/query_expressions/helpers.cpp
-        src/query_expressions/helpers.h
+        src/database_engine.cpp
+        src/database_engine.h
+        src/execution/executor.cpp
+        src/execution/executor.h
+        src/execution/helpers.cpp
+        src/execution/helpers.h
         src/execution/operation_visitor.cpp
         src/execution/operation_visitor.cpp
         src/execution/operation_visitor.h
-        src/execution/executor.cpp
-        src/execution/executor.h
-        src/query_expressions/compiler.cpp
-        src/query_expressions/compiler.h
         src/execution/select_operation.cpp
         src/execution/select_operation.h
-        src/execution/helpers.cpp
-        src/execution/helpers.h
+        src/helpers.cpp
+        src/helpers.h
+        src/query.cpp
+        src/query.h
+        src/query_expressions/compiler.cpp
+        src/query_expressions/compiler.h
         src/query_expressions/execution.cpp
-        src/query_expressions/execution.h)
+        src/query_expressions/execution.h
+        src/query_expressions/expressions.cpp
+        src/query_expressions/expressions.h
+        src/query_expressions/helpers.cpp
+        src/query_expressions/helpers.h
+        src/query_expressions/visitor.cpp
+        src/query_expressions/visitor.h
+        src/storage.cpp
+        src/storage.h
+        src/table.cpp
+        src/table.h)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)

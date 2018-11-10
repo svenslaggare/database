@@ -8,6 +8,13 @@
  * Contains helper functions for query expressions
  */
 namespace QueryExpressionHelpers {
+	/**
+	 * Applies the given compare operation
+	 * @tparam T The type of the values
+	 * @param op The operation
+	 * @param x The lhs
+	 * @param y The rhs
+	 */
 	template<typename T>
 	bool compare(CompareOperator op, const T& x, const T& y) {
 		switch (op) {
@@ -26,6 +33,13 @@ namespace QueryExpressionHelpers {
 		}
 	}
 
+	/**
+	 * Applies the given math operation
+	 * @tparam T The type of the values
+	 * @param op The operation
+	 * @param x The lhs
+	 * @param y The rhs
+	 */
 	template<typename T>
 	T apply(MathOperator op, const T& x, const T& y) {
 		switch (op) {

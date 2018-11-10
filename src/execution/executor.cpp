@@ -1,7 +1,6 @@
 #include "executor.h"
 #include "../table.h"
 #include "../database_engine.h"
-#include "../query_expressions/evaluator.h"
 #include "../query_expressions/helpers.h"
 #include "../query_expressions/compiler.h"
 #include "select_operation.h"
@@ -44,7 +43,7 @@ void OperationExecutorVisitor::visit(QuerySelectOperation* operation) {
 void OperationExecutorVisitor::visit(QueryInsertOperation* operation) {
 	auto& table = databaseEngine.getTable(operation->table);
 	std::size_t columnIndex = 0;
-	if (operation->columns.size() != table.schema().columns.size()) {
+	if (operation->columns.size() != table.schema().columns().size()) {
 		throw std::runtime_error("Wrong number of columns.");
 	}
 
@@ -56,7 +55,7 @@ void OperationExecutorVisitor::visit(QueryInsertOperation* operation) {
 
 			for (auto& columnValues : operation->values) {
 				auto& value = columnValues[columnIndex];
-				if (value.type != columnDefinition.type) {
+				if (value.type != columnDefinition.type()) {
 					throw std::runtime_error("Wrong type.");
 				}
 
@@ -64,7 +63,7 @@ void OperationExecutorVisitor::visit(QueryInsertOperation* operation) {
 			}
 		};
 
-		handleGenericType(columnDefinition.type, insertForType);
+		handleGenericType(columnDefinition.type(), insertForType);
 		columnIndex++;
 	}
 }

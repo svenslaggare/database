@@ -2,7 +2,8 @@
 #include "compiler.h"
 #include "../table.h"
 
-ExpressionExecutionEngine::ExpressionExecutionEngine() {
+ExpressionExecutionEngine::ExpressionExecutionEngine()
+	: mExpressionType(ColumnType::Int32) {
 
 }
 
@@ -14,7 +15,7 @@ void ExpressionExecutionEngine::addInstruction(std::unique_ptr<ExpressionIR> ins
 	mInstructions.push_back(std::move(instruction));
 }
 
-void ExpressionExecutionEngine::removeLast() {
+void ExpressionExecutionEngine::removeLastInstruction() {
 	mInstructions.erase(mInstructions.end() - 1);
 }
 
@@ -132,5 +133,5 @@ void CompareExpressionLeftColumnRightColumnIR::execute(ExpressionExecutionEngine
 		executionEngine.pushEvaluation(QueryValue(QueryExpressionHelpers::compare(op, lhsValue, rhsValue)));
 	};
 
-	handleGenericType(lhsColumn->type, handleForType);
+	handleGenericType(lhsColumn->type(), handleForType);
 }

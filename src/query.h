@@ -14,6 +14,11 @@ struct QueryOperationVisitor;
  */
 struct QueryOperation {
 	virtual ~QueryOperation() = default;
+
+	/**
+	 * Accepts the given visitor
+	 * @param visitor The visitor
+	 */
 	virtual void accept(QueryOperationVisitor& visitor) = 0;
 };
 
@@ -25,7 +30,13 @@ struct OrderingClause {
 	bool ascending;
 
 	OrderingClause() = default;
-	explicit OrderingClause(const std::string& name, bool ascending = false);
+
+	/**
+	 * Creates a new ordering clause
+	 * @param name The name of the field to order on
+	 * @param ascending Indicates if the ordering is ascending
+	 */
+	explicit OrderingClause(const std::string& name, bool ascending = true);
 };
 
 /**
@@ -37,6 +48,13 @@ struct QuerySelectOperation : public QueryOperation {
 	std::unique_ptr<QueryExpression> filter;
 	OrderingClause order;
 
+	/**
+	 * Creates a new select operation
+	 * @param table The table
+	 * @param projection The projections
+	 * @param filter The filtering
+	 * @param order The ordering
+	 */
 	QuerySelectOperation(std::string table,
 						 std::vector<std::unique_ptr<QueryExpression>> projection,
 						 std::unique_ptr<QueryExpression> filter = {},
@@ -53,6 +71,12 @@ struct QueryInsertOperation : public QueryOperation {
 	std::vector<std::string> columns;
 	std::vector<std::vector<QueryValue>> values;
 
+	/**
+	 * Creates a new insert operation
+	 * @param table The table
+	 * @param columns The columns to insert for
+	 * @param values The values for the columns.
+	 */
 	QueryInsertOperation(const std::string& table, std::vector<std::string> columns, std::vector<std::vector<QueryValue>> values);
 
 	virtual void accept(QueryOperationVisitor& visitor) override;
@@ -71,6 +95,10 @@ struct QueryUpdateOperation : public QueryOperation {
 struct Query {
 	std::vector<std::unique_ptr<QueryOperation>> operations;
 
+	/**
+	 * Creates a new query
+	 * @param operations The operations
+	 */
 	explicit Query(std::vector<std::unique_ptr<QueryOperation>> operations);
 };
 
@@ -80,10 +108,15 @@ struct Query {
 struct QueryResult {
 	std::vector<ColumnStorage> columns;
 
+	/**
+	 * Returns the underlying storage for the given column
+	 * @tparam T Type of the data
+	 * @param index The index of the column in the result
+	 */
 	template<typename T>
 	const UnderlyingColumnStorage<T>& getColumn(std::size_t index) const {
 		auto& column = columns.at(index);
-		if (ColumnTypeHelpers::getType<T>() != column.type) {
+		if (ColumnTypeHelpers::getType<T>() != column.type()) {
 			throw std::runtime_error("Wrong type.");
 		}
 

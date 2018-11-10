@@ -2,7 +2,7 @@
 #include "expressions.h"
 
 /**
- * Represents a visitor for database query expressions
+ * Represents a visitor for query expressions
  */
 struct QueryExpressionVisitor {
 	virtual ~QueryExpressionVisitor() = default;

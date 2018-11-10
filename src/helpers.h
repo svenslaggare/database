@@ -33,6 +33,6 @@ struct Timing {
 	TimePoint startTime = Helpers::timeNow();
 	std::string before;
 
-	Timing(const std::string& before = "");
+	explicit Timing(const std::string& before = "");
 	~Timing();
 };

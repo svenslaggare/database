@@ -11,28 +11,22 @@ struct QueryResult;
 /**
  * Represents an executor for select operation
  */
-struct SelectOperationExecutor {
-	Table& table;
-	QuerySelectOperation* operation;
-	std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projectionExecutionEngines;
-	ExpressionExecutionEngine& filterExecutionEngine;
-	QueryResult& result;
-	bool optimize;
+class SelectOperationExecutor {
+private:
+	Table& mTable;
+	QuerySelectOperation* mOperation;
+	std::vector<std::unique_ptr<ExpressionExecutionEngine>>& mProjectionExecutionEngines;
+	ExpressionExecutionEngine& mFilterExecutionEngine;
+	QueryResult& mResult;
+	bool mOptimize;
 
-	bool doOrdering = false;
-	std::unique_ptr<ExpressionExecutionEngine> orderExecutionEngine;
-	std::vector<RawQueryValue> orderingData;
+	bool mOrderResult = false;
+	std::unique_ptr<ExpressionExecutionEngine> mOrderExecutionEngine;
+	std::vector<RawQueryValue> mOrderingData;
 
-	ReducedProjections reducedProjections;
+	ReducedProjections mReducedProjections;
 
-	std::vector<std::function<bool ()>> executors;
-
-	SelectOperationExecutor(Table& table,
-							QuerySelectOperation* operation,
-							std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projectionExecutionEngines,
-							ExpressionExecutionEngine& filterExecutionEngine,
-							QueryResult& result,
-							bool optimize = true);
+	std::vector<std::function<bool ()>> mExecutors;
 
 	bool hasReducedToOneInstruction() const;
 
@@ -43,5 +37,25 @@ struct SelectOperationExecutor {
 	bool executeDefault();
 
 	void addForOrdering(std::size_t rowIndex);
+public:
+	/**
+	 * Creates a new select operation executor
+	 * @param table The table
+	 * @param operation The operation
+	 * @param projectionExecutionEngines The projection execution engines
+	 * @param filterExecutionEngine The filter execution engine
+	 * @param result The result
+	 * @param optimize Indicates if to optimize the execution
+	 */
+	SelectOperationExecutor(Table& table,
+							QuerySelectOperation* operation,
+							std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projectionExecutionEngines,
+							ExpressionExecutionEngine& filterExecutionEngine,
+							QueryResult& result,
+							bool optimize = true);
+
+	/**
+	 * Executes the operation
+	 */
 	void execute();
 };

@@ -2,20 +2,20 @@
 #include "helpers.h"
 
 QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(Table& table, ExpressionExecutionEngine& executionEngine, bool optimize)
-	: table(table), executionEngine(executionEngine), optimize(optimize) {
+	: mTable(table), mExecutionEngine(executionEngine), mOptimize(optimize) {
 
 }
 
 void QueryExpressionCompilerVisitor::compile(QueryExpression* rootExpression) {
 	rootExpression->accept(*this, nullptr);
 
-	executionEngine.fillSlots(table);
+	mExecutionEngine.fillSlots(mTable);
 
-	if (typeEvaluationStack.size() != 1) {
+	if (mTypeEvaluationStack.size() != 1) {
 		throw std::runtime_error("Expected one value on the stack.");
 	}
 
-	executionEngine.setExpressionType(typeEvaluationStack.top());
+	mExecutionEngine.setExpressionType(mTypeEvaluationStack.top());
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryRootExpression* expression) {
@@ -23,28 +23,28 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryRootExp
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryColumnReferenceExpression* expression) {
-	executionEngine.addInstruction(std::make_unique<ColumnReferenceExpressionIR>(executionEngine.getSlot(expression->name)));
-	typeEvaluationStack.push(table.getColumn(expression->name).type);
+	mExecutionEngine.addInstruction(std::make_unique<ColumnReferenceExpressionIR>(mExecutionEngine.getSlot(expression->name)));
+	mTypeEvaluationStack.push(mTable.getColumn(expression->name).type());
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryValueExpression* expression) {
-	executionEngine.addInstruction(std::make_unique<QueryValueExpressionIR>(expression->value));
-	typeEvaluationStack.push(expression->value.type);
+	mExecutionEngine.addInstruction(std::make_unique<QueryValueExpressionIR>(expression->value));
+	mTypeEvaluationStack.push(expression->value.type);
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryAndExpression* expression) {
 	expression->lhs->accept(*this, expression);
 	expression->rhs->accept(*this, expression);
 
-	if (typeEvaluationStack.size() < 2) {
+	if (mTypeEvaluationStack.size() < 2) {
 		throw std::runtime_error("Expected two values on the stack.");
 	}
 
-	auto op2 = typeEvaluationStack.top();
-	typeEvaluationStack.pop();
+	auto op2 = mTypeEvaluationStack.top();
+	mTypeEvaluationStack.pop();
 
-	auto op1 = typeEvaluationStack.top();
-	typeEvaluationStack.pop();
+	auto op1 = mTypeEvaluationStack.top();
+	mTypeEvaluationStack.pop();
 
 	if (op1 != op2) {
 		throw std::runtime_error("Different types.");
@@ -54,27 +54,27 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryAndExpr
 		throw std::runtime_error("Expected bool type.");
 	}
 
-	executionEngine.addInstruction(std::make_unique<AndExpressionIR>());
-	typeEvaluationStack.push(ColumnType::Bool);
+	mExecutionEngine.addInstruction(std::make_unique<AndExpressionIR>());
+	mTypeEvaluationStack.push(ColumnType::Bool);
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompareExpression* expression) {
 	expression->lhs->accept(*this, expression);
 	expression->rhs->accept(*this, expression);
 
-	auto op2 = typeEvaluationStack.top();
-	typeEvaluationStack.pop();
+	auto op2 = mTypeEvaluationStack.top();
+	mTypeEvaluationStack.pop();
 
-	auto op1 = typeEvaluationStack.top();
-	typeEvaluationStack.pop();
+	auto op1 = mTypeEvaluationStack.top();
+	mTypeEvaluationStack.pop();
 
 	if (op1 != op2) {
 		throw std::runtime_error("Different types.");
 	}
 
-	typeEvaluationStack.push(ColumnType::Bool);
+	mTypeEvaluationStack.push(ColumnType::Bool);
 
-	auto& instructions = executionEngine.instructions();
+	auto& instructions = mExecutionEngine.instructions();
 	auto& rhs = instructions[instructions.size() - 1];
 	auto& lhs = instructions[instructions.size() - 2];
 
@@ -83,14 +83,14 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 	auto lhsValue = dynamic_cast<QueryValueExpressionIR*>(lhs.get());
 	auto lhsColumn = dynamic_cast<ColumnReferenceExpressionIR*>(lhs.get());
 
-	if (optimize) {
+	if (mOptimize) {
 		if (lhsValue != nullptr && rhsColumn != nullptr) {
-			executionEngine.removeLast();
-			executionEngine.removeLast();
+			mExecutionEngine.removeLastInstruction();
+			mExecutionEngine.removeLastInstruction();
 
 			auto handleForType = [&](auto dummy) {
 				using Type = decltype(dummy);
-				executionEngine.addInstruction(std::make_unique<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>>(
+				mExecutionEngine.addInstruction(std::make_unique<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>>(
 					lhsValue->value.getValue<Type>(),
 					rhsColumn->columnSlot,
 					expression->op));
@@ -99,12 +99,12 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 			handleGenericType(lhsValue->value.type, handleForType);
 			return;
 		} else if (lhsColumn != nullptr && rhsValue != nullptr) {
-			executionEngine.removeLast();
-			executionEngine.removeLast();
+			mExecutionEngine.removeLastInstruction();
+			mExecutionEngine.removeLastInstruction();
 
 			auto handleForType = [&](auto dummy) {
 				using Type = decltype(dummy);
-				executionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>>(
+				mExecutionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>>(
 					lhsColumn->columnSlot,
 					rhsValue->value.getValue<Type>(),
 					expression->op));
@@ -113,9 +113,9 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 			handleGenericType(rhsValue->value.type, handleForType);
 			return;
 		} else if (lhsColumn != nullptr && rhsColumn != nullptr) {
-			executionEngine.removeLast();
-			executionEngine.removeLast();
-			executionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightColumnIR>(
+			mExecutionEngine.removeLastInstruction();
+			mExecutionEngine.removeLastInstruction();
+			mExecutionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightColumnIR>(
 				lhsColumn->columnSlot,
 				rhsColumn->columnSlot,
 				expression->op));
@@ -123,18 +123,18 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 		}
 	}
 
-	executionEngine.addInstruction(std::make_unique<CompareExpressionIR>(expression->op));
+	mExecutionEngine.addInstruction(std::make_unique<CompareExpressionIR>(expression->op));
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryMathExpression* expression) {
 	expression->lhs->accept(*this, expression);
 	expression->rhs->accept(*this, expression);
 
-	auto op2 = typeEvaluationStack.top();
-	typeEvaluationStack.pop();
+	auto op2 = mTypeEvaluationStack.top();
+	mTypeEvaluationStack.pop();
 
-	auto op1 = typeEvaluationStack.top();
-	typeEvaluationStack.pop();
+	auto op1 = mTypeEvaluationStack.top();
+	mTypeEvaluationStack.pop();
 
 	if (op1 != op2) {
 		throw std::runtime_error("Different types.");
@@ -144,6 +144,6 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryMathExp
 		throw std::runtime_error("Only Int32 and Float32 supported.");
 	}
 
-	typeEvaluationStack.push(op1);
-	executionEngine.addInstruction(std::make_unique<MathOperationExpressionIR>(expression->op));
+	mTypeEvaluationStack.push(op1);
+	mExecutionEngine.addInstruction(std::make_unique<MathOperationExpressionIR>(expression->op));
 }

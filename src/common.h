@@ -76,6 +76,10 @@ constexpr std::size_t MAX_VALUE_SIZE = std::max(std::max(sizeof(bool), sizeof(st
 struct RawQueryValue {
 	std::uint8_t data[MAX_VALUE_SIZE];
 
+	/**
+	 * Returns the underlying value
+	 * @tparam T The type of the value
+	 */
 	template<typename T>
 	T getValue() const {
 		return *reinterpret_cast<const T*>(&data);
@@ -89,11 +93,33 @@ struct QueryValue {
 	ColumnType type;
 	RawQueryValue data;
 
+	/**
+	 * Creates an empty value
+	 */
 	explicit QueryValue();
+
+	/**
+	 * Creates an Int32 value
+	 * @param value The value
+	 */
 	explicit QueryValue(std::int32_t value);
+
+	/**
+	 * Creates a Float32 value
+	 * @param value The value
+	 */
 	explicit QueryValue(float value);
+
+	/**
+	 * Creates a Bool value
+	 * @param value The value
+	 */
 	explicit QueryValue(bool value);
 
+	/**
+	 * Returns the value
+	 * @tparam T The underlying type of the value
+	 */
 	template<typename T>
 	T getValue() const {
 		if (type != ColumnTypeHelpers::getType<T>()) {

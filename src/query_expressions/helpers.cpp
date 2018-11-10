@@ -6,5 +6,5 @@ QueryValue QueryExpressionHelpers::getValueForColumn(const ColumnStorage& storag
 		return QueryValue(storage.getUnderlyingStorage<Type>().at(rowIndex));
 	};
 
-	return handleGenericTypeResult(QueryValue, storage.type, handleForType);
+	return handleGenericTypeResult(QueryValue, storage.type(), handleForType);
 }

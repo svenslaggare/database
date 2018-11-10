@@ -18,7 +18,7 @@ namespace {
 			resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage.getUnderlyingStorage<Type>()[rowIndex]);
 		};
 
-		handleGenericType(columnStorage.type, handleForType);
+		handleGenericType(columnStorage.type(), handleForType);
 	}
 }
 
@@ -85,10 +85,10 @@ void ExecutorHelpers::orderResult(ColumnType orderDataType, const std::vector<Ra
 	{
 		Timing timing("updateResult: ");
 		for (auto& column : result.columns) {
-			handleGenericType(column.type, [&](auto dummy) -> void {
+			handleGenericType(column.type(), [&](auto dummy) -> void {
 				using Type = decltype(dummy);
 
-				ColumnStorage sortedValues(column.type);
+				ColumnStorage sortedValues(column.type());
 				auto& underlyingStorageOriginal = column.getUnderlyingStorage<Type>();
 				auto& underlyingStorageSorted = sortedValues.getUnderlyingStorage<Type>();
 				underlyingStorageSorted.reserve(underlyingStorageOriginal.size());
