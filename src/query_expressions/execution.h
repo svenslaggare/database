@@ -47,6 +47,12 @@ public:
 	std::size_t getSlot(const std::string& name);
 
 	/**
+	 * Returns the column of the given slot
+	 * @param slot The slot
+	 */
+	std::string fromSlot(std::size_t slot) const;
+
+	/**
 	 * Fills the slots
 	 * @param table The table
 	 */

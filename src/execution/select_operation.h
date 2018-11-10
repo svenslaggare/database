@@ -33,9 +33,12 @@ private:
 	void addForOrdering(std::size_t rowIndex);
 
 	bool executeNoFilter();
+
 	bool executeFilterLeftIsColumn();
 	bool executeFilterRightIsColumn();
 	bool executeFilterBothColumn();
+
+	bool executeTreeIndexScan();
 	bool executeDefault();
 public:
 	/**

@@ -6,6 +6,7 @@
 
 #include "storage.h"
 #include "common.h"
+#include "indices.h"
 
 /**
  * Represents a column in a database schema
@@ -74,6 +75,8 @@ private:
 	Schema mSchema;
 	std::unordered_map<std::string, ColumnStorage> mColumnsStorage;
 	std::vector<ColumnStorage*> mColumnIndexToStorage;
+
+	TreeIndex mPrimaryIndex;
 public:
 	/**
 	 * Creates a new table
@@ -85,6 +88,11 @@ public:
 	 * Returns the schema
 	 */
 	const Schema& schema() const;
+
+	/**
+	 * Returns the primary index
+	 */
+	const TreeIndex& primaryIndex() const;
 
 	/**
 	 * Returns the number of rows in the table
@@ -100,7 +108,12 @@ public:
 	template<typename T>
 	void insertColumn(const std::string& name, T value) {
 		auto& columnStorage = mColumnsStorage.at(name);
+		std::size_t rowIndex = columnStorage.size();
 		columnStorage.getUnderlyingStorage<T>().push_back(value);
+
+		if (name == mPrimaryIndex.column().name()) {
+			mPrimaryIndex.insert(value, rowIndex);
+		}
 	}
 
 	inline void insertRow() {

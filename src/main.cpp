@@ -83,8 +83,8 @@ int main() {
 //				std::make_unique<QueryValueExpression>(QueryValue(35.0f)),
 //				CompareOperator::LessThan))
 		std::make_unique<QueryCompareExpression>(
-			std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.75))),
 			std::make_unique<QueryColumnReferenceExpression>("x"),
+			std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.15) * 1)),
 			CompareOperator::Equal)
 //		std::unique_ptr<QueryExpression>()
 //		std::make_unique<QueryValueExpression>(QueryValue(true))
@@ -93,7 +93,7 @@ int main() {
 //			std::make_unique<QueryValueExpression>(QueryValue(350000.0f)),
 //			CompareOperator::LessThan)
 //		,std::make_unique<QueryColumnReferenceExpression>("x")
-		,OrderingClause("y", true)
+//		,OrderingClause("y", true)
 	));
 
 	Schema schema(

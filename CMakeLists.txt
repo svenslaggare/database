@@ -37,6 +37,6 @@ set(SOURCE_FILES
         src/storage.cpp
         src/storage.h
         src/table.cpp
-        src/table.h)
+        src/table.h src/indices.cpp src/indices.h)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)

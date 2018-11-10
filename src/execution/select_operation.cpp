@@ -19,6 +19,11 @@ SelectOperationExecutor::SelectOperationExecutor(Table& table,
 	  mOptimize(optimize) {
 	if (optimize) {
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeNoFilter, this));
+	}
+
+	mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeTreeIndexScan, this));
+
+	if (optimize) {
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterLeftIsColumn, this));
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterRightIsColumn, this));
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterBothColumn, this));
@@ -79,6 +84,8 @@ bool SelectOperationExecutor::executeNoFilter() {
 
 	return false;
 }
+
+
 
 bool SelectOperationExecutor::executeFilterLeftIsColumn() {
 	if (hasReducedToOneInstruction() && mReducedProjections.allReduced) {
@@ -170,6 +177,143 @@ bool SelectOperationExecutor::executeFilterBothColumn() {
 	}
 
 	return false;
+}
+
+namespace {
+	template<typename T>
+	using TreeIndexIterator = typename TreeIndex::UnderlyingStorage<T>::const_iterator;
+
+	template<typename T>
+	std::pair<TreeIndexIterator<T>,	TreeIndexIterator<T>> findTreeIndexIterators(const TreeIndex::UnderlyingStorage<T>& underlyingIndex,
+																				 CompareOperator op,
+																				 const T& indexSearchValue) {
+		auto startIterator = underlyingIndex.end();
+		auto endIterator = underlyingIndex.end();
+
+		switch (op) {
+			case CompareOperator::Equal:
+				startIterator = underlyingIndex.lower_bound(indexSearchValue);
+				endIterator = underlyingIndex.upper_bound(indexSearchValue);
+
+				if (endIterator == underlyingIndex.end()) {
+					startIterator = underlyingIndex.end();
+					endIterator = underlyingIndex.end();
+				}
+				break;
+			case CompareOperator::NotEqual:
+				break;
+			case CompareOperator::LessThan: {
+				startIterator = underlyingIndex.begin();
+				endIterator = underlyingIndex.upper_bound(indexSearchValue);
+
+				if (endIterator != underlyingIndex.end()) {
+					--endIterator;
+				} else {
+					startIterator = underlyingIndex.end();
+					endIterator = underlyingIndex.end();
+				}
+				break;
+			}
+			case CompareOperator::LessThanOrEqual:
+				startIterator = underlyingIndex.begin();
+				endIterator = underlyingIndex.upper_bound(indexSearchValue);
+
+				if (endIterator == underlyingIndex.end()) {
+					startIterator = underlyingIndex.end();
+					endIterator = underlyingIndex.end();
+				}
+				break;
+			case CompareOperator::GreaterThan:
+				startIterator = underlyingIndex.upper_bound(indexSearchValue);
+				endIterator = underlyingIndex.end();
+
+				if (startIterator == underlyingIndex.end()) {
+					startIterator = underlyingIndex.end();
+					endIterator = underlyingIndex.end();
+				}
+				break;
+			case CompareOperator::GreaterThanOrEqual:
+				startIterator = underlyingIndex.upper_bound(indexSearchValue);
+				endIterator = underlyingIndex.end();
+
+				if (startIterator != underlyingIndex.end()) {
+					--startIterator;
+				} else {
+					startIterator = underlyingIndex.end();
+					endIterator = underlyingIndex.end();
+				}
+				break;
+		}
+
+		return std::make_pair(startIterator, endIterator);
+	}
+}
+
+bool SelectOperationExecutor::executeTreeIndexScan() {
+	auto treeIndexSearch = [&](std::size_t columnSlot, CompareOperator op, auto indexSearchValue) -> bool {
+		if (mTable.primaryIndex().column().name() != mFilterExecutionEngine.fromSlot(columnSlot) || op == CompareOperator::NotEqual) {
+			return false;
+		}
+
+		using Type = decltype(indexSearchValue);
+
+		auto& underlyingIndex = mTable.primaryIndex().getUnderlyingStorage<Type>();
+		auto iteratorRange = findTreeIndexIterators(underlyingIndex, op, indexSearchValue);
+
+		for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
+			auto rowIndex = it->second;
+//			std::cout << rowIndex << std::endl;
+			ExecutorHelpers::addRowToResult(
+				mProjectionExecutionEngines,
+				mReducedProjections.storage,
+				mResult,
+				rowIndex);
+
+			if (mOrderResult) {
+				this->addForOrdering(rowIndex);
+			}
+		}
+
+		return true;
+	};
+
+	return anyGenericType([&](auto dummy) {
+		using Type = decltype(dummy);
+
+		if (hasReducedToOneInstruction()) {
+			auto firstInstruction = mFilterExecutionEngine.instructions().front().get();
+
+			if (auto compareInstruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(firstInstruction)) {
+				return treeIndexSearch(compareInstruction->lhs, compareInstruction->op, compareInstruction->rhs);
+			} else if (auto compareInstruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(firstInstruction)) {
+				CompareOperator op;
+				switch (compareInstruction->op) {
+					case CompareOperator::Equal:
+						op = CompareOperator::Equal;
+						break;
+					case CompareOperator::NotEqual:
+						op = CompareOperator::NotEqual;
+						break;
+					case CompareOperator::LessThan:
+						op = CompareOperator::GreaterThan;
+						break;
+					case CompareOperator::LessThanOrEqual:
+						op = CompareOperator::GreaterThanOrEqual;
+						break;
+					case CompareOperator::GreaterThan:
+						op = CompareOperator::LessThan;
+						break;
+					case CompareOperator::GreaterThanOrEqual:
+						op = CompareOperator::LessThanOrEqual;
+						break;
+				}
+
+				return treeIndexSearch(compareInstruction->rhs, op, compareInstruction->lhs);
+			}
+		}
+
+		return false;
+	});
 }
 
 bool SelectOperationExecutor::executeDefault() {

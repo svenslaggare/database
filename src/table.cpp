@@ -36,7 +36,7 @@ const std::vector<ColumnDefinition>& Schema::columns() const {
 }
 
 Table::Table(Schema schema)
-	: mSchema(std::move(schema)) {
+	: mSchema(std::move(schema)), mPrimaryIndex(mSchema.columns()[0]) {
 	for (auto& column : mSchema.columns()) {
 		mColumnsStorage.emplace(column.name(), ColumnStorage(column));
 	}
@@ -48,6 +48,10 @@ Table::Table(Schema schema)
 
 const Schema& Table::schema() const {
 	return mSchema;
+}
+
+const TreeIndex& Table::primaryIndex() const {
+	return mPrimaryIndex;
 }
 
 std::size_t Table::numRows() const {

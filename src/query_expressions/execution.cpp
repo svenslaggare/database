@@ -27,6 +27,16 @@ std::size_t ExpressionExecutionEngine::getSlot(const std::string& name) {
 	return mColumnNameToSlot[name];
 }
 
+std::string ExpressionExecutionEngine::fromSlot(std::size_t slot) const {
+	for (auto& current : mColumnNameToSlot) {
+		if (current.second == slot) {
+			return current.first;
+		}
+	}
+
+	return "";
+}
+
 void ExpressionExecutionEngine::fillSlots(Table& table) {
 	mSlottedColumnStorage.resize(mColumnNameToSlot.size());
 	for (auto& column : mColumnNameToSlot) {
