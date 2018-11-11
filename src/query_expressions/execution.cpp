@@ -11,6 +11,10 @@ const std::vector<std::unique_ptr<ExpressionIR>>& ExpressionExecutionEngine::ins
 	return mInstructions;
 }
 
+std::vector<std::unique_ptr<ExpressionIR>>& ExpressionExecutionEngine::instructions() {
+	return mInstructions;
+}
+
 void ExpressionExecutionEngine::addInstruction(std::unique_ptr<ExpressionIR> instruction) {
 	mInstructions.push_back(std::move(instruction));
 }

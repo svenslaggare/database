@@ -83,24 +83,32 @@ int main() {
 //				std::make_unique<QueryValueExpression>(QueryValue(35.0f)),
 //				CompareOperator::LessThan))
 //		std::make_unique<QueryAndExpression>(
+//			std::make_unique<QueryValueExpression>(QueryValue(true)),
+//			std::make_unique<QueryCompareExpression>(
+//				std::make_unique<QueryColumnReferenceExpression>("y"),
+//				std::make_unique<QueryValueExpression>(QueryValue(35.0f)),
+//				CompareOperator::LessThan)
+//		 )
+//		std::make_unique<QueryAndExpression>(
 //			std::make_unique<QueryCompareExpression>(
 //				std::make_unique<QueryColumnReferenceExpression>("y"),
 //				std::make_unique<QueryValueExpression>(QueryValue(35.0f)),
 //				CompareOperator::LessThan),
-//			std::make_unique<QueryValueExpression>(QueryValue(false)))
-//		std::make_unique<QueryCompareExpression>(
-//			std::make_unique<QueryColumnReferenceExpression>("x"),
-//			std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.85) * 1)),
-//			CompareOperator::GreaterThan)
-		std::make_unique<QueryAndExpression>(
-			std::make_unique<QueryCompareExpression>(
-				std::make_unique<QueryColumnReferenceExpression>("x"),
-				std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.85) * 1)),
-				CompareOperator::GreaterThan),
-			std::make_unique<QueryCompareExpression>(
-				std::make_unique<QueryColumnReferenceExpression>("x"),
-				std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.90) * 1)),
-				CompareOperator::LessThan))
+//			std::make_unique<QueryValueExpression>(QueryValue(true))
+//		)
+		std::make_unique<QueryCompareExpression>(
+			std::make_unique<QueryColumnReferenceExpression>("x"),
+			std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.85) * 1)),
+			CompareOperator::GreaterThan)
+//		std::make_unique<QueryAndExpression>(
+//			std::make_unique<QueryCompareExpression>(
+//				std::make_unique<QueryColumnReferenceExpression>("x"),
+//				std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.85) * 1)),
+//				CompareOperator::GreaterThan),
+//			std::make_unique<QueryCompareExpression>(
+//				std::make_unique<QueryColumnReferenceExpression>("x"),
+//				std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.90) * 1)),
+//				CompareOperator::LessThan))
 //		std::make_unique<QueryAndExpression>(
 //			std::make_unique<QueryCompareExpression>(
 //				std::make_unique<QueryColumnReferenceExpression>("y"),

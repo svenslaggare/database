@@ -1,5 +1,6 @@
 #include "compiler.h"
 #include "helpers.h"
+#include "ir_optimizer.h"
 
 QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(Table& table, ExpressionExecutionEngine& executionEngine, bool optimize)
 	: mTable(table), mExecutionEngine(executionEngine), mOptimize(optimize) {
@@ -8,6 +9,10 @@ QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(Table& table, Exp
 
 void QueryExpressionCompilerVisitor::compile(QueryExpression* rootExpression) {
 	rootExpression->accept(*this, nullptr);
+	if (mOptimize) {
+		ExpressionIROptimizer optimizer(mExecutionEngine);
+		optimizer.optimize();
+	}
 
 	mExecutionEngine.fillSlots(mTable);
 
@@ -55,45 +60,6 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryAndExpr
 	}
 
 	mTypeEvaluationStack.push(ColumnType::Bool);
-
-	if (mOptimize) {
-		auto& instructions = mExecutionEngine.instructions();
-		auto& rhs = instructions[instructions.size() - 1];
-		auto& lhs = instructions[instructions.size() - 2];
-
-		auto rhsValue = dynamic_cast<QueryValueExpressionIR*>(rhs.get());
-		auto lhsValue = dynamic_cast<QueryValueExpressionIR*>(lhs.get());
-
-		if (lhsValue != nullptr && rhsValue == nullptr) {
-			if (lhsValue->value.getValue<bool>()) {
-				mExecutionEngine.removeInstruction(instructions.size() - 2);
-			} else {
-				mExecutionEngine.removeLastInstruction();
-				mExecutionEngine.removeLastInstruction();
-				mExecutionEngine.addInstruction(std::make_unique<QueryValueExpressionIR>(QueryValue(false)));
-			}
-
-			return;
-		} else if (lhsValue == nullptr && rhsValue != nullptr) {
-			if (rhsValue->value.getValue<bool>()) {
-				mExecutionEngine.removeInstruction(instructions.size() - 1);
-			} else {
-				mExecutionEngine.removeLastInstruction();
-				mExecutionEngine.removeLastInstruction();
-				mExecutionEngine.addInstruction(std::make_unique<QueryValueExpressionIR>(QueryValue(false)));
-			}
-
-			return;
-		} else if (lhsValue != nullptr && rhsValue != nullptr) {
-			mExecutionEngine.removeLastInstruction();
-			mExecutionEngine.removeLastInstruction();
-			mExecutionEngine.addInstruction(std::make_unique<QueryValueExpressionIR>(QueryValue(
-				lhsValue->value.getValue<bool>() == rhsValue->value.getValue<bool>())));
-
-			return;
-		}
-	}
-
 	mExecutionEngine.addInstruction(std::make_unique<AndExpressionIR>());
 }
 
@@ -112,56 +78,6 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryCompare
 	}
 
 	mTypeEvaluationStack.push(ColumnType::Bool);
-
-	if (mOptimize) {
-		auto& instructions = mExecutionEngine.instructions();
-		auto& rhs = instructions[instructions.size() - 1];
-		auto& lhs = instructions[instructions.size() - 2];
-
-		auto rhsValue = dynamic_cast<QueryValueExpressionIR*>(rhs.get());
-		auto rhsColumn = dynamic_cast<ColumnReferenceExpressionIR*>(rhs.get());
-		auto lhsValue = dynamic_cast<QueryValueExpressionIR*>(lhs.get());
-		auto lhsColumn = dynamic_cast<ColumnReferenceExpressionIR*>(lhs.get());
-
-		if (lhsValue != nullptr && rhsColumn != nullptr) {
-			mExecutionEngine.removeLastInstruction();
-			mExecutionEngine.removeLastInstruction();
-
-			auto handleForType = [&](auto dummy) {
-				using Type = decltype(dummy);
-				mExecutionEngine.addInstruction(std::make_unique<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>>(
-					lhsValue->value.getValue<Type>(),
-					rhsColumn->columnSlot,
-					expression->op));
-			};
-
-			handleGenericType(lhsValue->value.type, handleForType);
-			return;
-		} else if (lhsColumn != nullptr && rhsValue != nullptr) {
-			mExecutionEngine.removeLastInstruction();
-			mExecutionEngine.removeLastInstruction();
-
-			auto handleForType = [&](auto dummy) {
-				using Type = decltype(dummy);
-				mExecutionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>>(
-					lhsColumn->columnSlot,
-					rhsValue->value.getValue<Type>(),
-					expression->op));
-			};
-
-			handleGenericType(rhsValue->value.type, handleForType);
-			return;
-		} else if (lhsColumn != nullptr && rhsColumn != nullptr) {
-			mExecutionEngine.removeLastInstruction();
-			mExecutionEngine.removeLastInstruction();
-			mExecutionEngine.addInstruction(std::make_unique<CompareExpressionLeftColumnRightColumnIR>(
-				lhsColumn->columnSlot,
-				rhsColumn->columnSlot,
-				expression->op));
-			return;
-		}
-	}
-
 	mExecutionEngine.addInstruction(std::make_unique<CompareExpressionIR>(expression->op));
 }
 

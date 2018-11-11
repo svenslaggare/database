@@ -4,7 +4,7 @@ project(database)
 set(CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -ggdb")
 
 set(SOURCE_FILES
         src/common.cpp
@@ -37,6 +37,6 @@ set(SOURCE_FILES
         src/storage.cpp
         src/storage.h
         src/table.cpp
-        src/table.h src/indices.cpp src/indices.h)
+        src/table.h src/indices.cpp src/indices.h src/query_expressions/ir_optimizer.cpp src/query_expressions/ir_optimizer.h)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)

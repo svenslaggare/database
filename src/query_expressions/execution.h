@@ -92,6 +92,11 @@ public:
 	const std::vector<std::unique_ptr<ExpressionIR>>& instructions() const;
 
 	/**
+	 * Returns the instructions
+	 */
+	std::vector<std::unique_ptr<ExpressionIR>>& instructions();
+
+	/**
 	 * Pops from the evaluation stack
 	 */
 	inline QueryValue popEvaluation() {

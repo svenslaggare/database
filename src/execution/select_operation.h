@@ -24,6 +24,8 @@ private:
 	std::unique_ptr<ExpressionExecutionEngine> mOrderExecutionEngine;
 	std::vector<RawQueryValue> mOrderingData;
 
+	std::size_t mNumRows;
+	std::vector<ColumnStorage> mWorkingStorage;
 	ReducedProjections mReducedProjections;
 
 	std::vector<std::function<bool ()>> mExecutors;
@@ -43,9 +45,7 @@ private:
 	bool executeFilterRightIsColumn();
 	bool executeFilterBothColumn();
 
-	void executeSequentialScan(std::size_t numRows);
-
-	bool executeTreeIndexScan();
+	bool tryExecuteTreeIndexScan();
 	bool executeDefault();
 public:
 	/**

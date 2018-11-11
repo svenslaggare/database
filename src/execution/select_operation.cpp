@@ -1,6 +1,7 @@
 #include "select_operation.h"
 #include "../query_expressions/compiler.h"
 #include "../helpers.h"
+#include "../query_expressions/ir_optimizer.h"
 
 #include <iostream>
 #include <algorithm>
@@ -17,13 +18,10 @@ SelectOperationExecutor::SelectOperationExecutor(Table& table,
 	  mFilterExecutionEngine(filterExecutionEngine),
 	  mResult(result),
 	  mOptimize(optimize) {
+	mNumRows = mTable.numRows();
+
 	if (optimize) {
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeNoFilter, this));
-	}
-
-	mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeTreeIndexScan, this));
-
-	if (optimize) {
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterLeftIsColumn, this));
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterRightIsColumn, this));
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterBothColumn, this));
@@ -39,6 +37,27 @@ bool SelectOperationExecutor::hasReducedToOneInstruction() const {
 void SelectOperationExecutor::addForOrdering(std::size_t rowIndex) {
 	mOrderExecutionEngine->execute(rowIndex);
 	mOrderingData.push_back(mOrderExecutionEngine->popEvaluation().data);
+}
+
+void SelectOperationExecutor::updateSlotsStorage(std::vector<ColumnStorage>& newStorage, ExpressionExecutionEngine& executionEngine) {
+	std::vector<ColumnStorage*> workingSlots;
+	for (std::size_t slot = 0; slot < executionEngine.numSlots(); slot++) {
+		auto column = executionEngine.fromSlot(slot);
+		workingSlots.push_back(&newStorage.at(mTable.schema().getDefinition(column).index()));
+	}
+
+	executionEngine.setSlotStorage(std::move(workingSlots));
+}
+
+void SelectOperationExecutor::updateAllSlotsStorage(std::vector<ColumnStorage>& newStorage) {
+	updateSlotsStorage(newStorage, mFilterExecutionEngine);
+	for (auto& projection : mProjectionExecutionEngines) {
+		updateSlotsStorage(newStorage, *projection);
+	}
+
+	if (mOrderExecutionEngine) {
+		updateSlotsStorage(newStorage, *mOrderExecutionEngine);
+	}
 }
 
 bool SelectOperationExecutor::executeNoFilter() {
@@ -97,6 +116,7 @@ bool SelectOperationExecutor::executeFilterLeftIsColumn() {
 				auto& lhsColumn = *(this->mFilterExecutionEngine.getStorage(instruction->lhs));
 				auto& lhsColumnValues = lhsColumn.template getUnderlyingStorage<Type>();
 
+				std::cout << lhsColumnValues.size() << std::endl;
 				for (std::size_t rowIndex = 0; rowIndex < lhsColumnValues.size(); rowIndex++) {
 					if (QueryExpressionHelpers::compare<Type>(instruction->op, lhsColumnValues[rowIndex], instruction->rhs)) {
 						ExecutorHelpers::addRowToResult(this->mReducedProjections.storage, this->mResult, rowIndex);
@@ -107,6 +127,7 @@ bool SelectOperationExecutor::executeFilterLeftIsColumn() {
 					}
 				}
 
+				std::cout << "executed: executeFilterLeftIsColumn" << std::endl;
 				return true;
 			}
 
@@ -121,7 +142,7 @@ bool SelectOperationExecutor::executeFilterRightIsColumn() {
 	if (hasReducedToOneInstruction() && mReducedProjections.allReduced) {
 		auto firstInstruction = this->mFilterExecutionEngine.instructions().front().get();
 
-		return anyGenericType([&](auto dummy) {
+		auto handleForType = [&](auto dummy) {
 			using Type = decltype(dummy);
 			if (auto instruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(firstInstruction)) {
 				auto& rhsColumn = *(this->mFilterExecutionEngine.getStorage(instruction->rhs));
@@ -137,11 +158,14 @@ bool SelectOperationExecutor::executeFilterRightIsColumn() {
 					}
 				}
 
+				std::cout << "executed: executeFilterRightIsColumn" << std::endl;
 				return true;
 			}
 
 			return false;
-		});
+		};
+
+		return anyGenericType(handleForType);
 	}
 
 	return false;
@@ -287,9 +311,7 @@ namespace {
 				columnsStorage.push_back(&table.getColumn(column.name()));
 			}
 
-			using Type = decltype(indexSearchValue);
-
-			auto& underlyingIndex = index->getUnderlyingStorage<Type>();
+			auto& underlyingIndex = index->getUnderlyingStorage<T>();
 			auto iteratorRange = findTreeIndexIterators(underlyingIndex, op, indexSearchValue);
 
 			for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
@@ -315,44 +337,7 @@ namespace {
 	}
 }
 
-void SelectOperationExecutor::updateSlotsStorage(std::vector<ColumnStorage>& newStorage, ExpressionExecutionEngine& executionEngine) {
-	std::vector<ColumnStorage*> workingSlots;
-	for (std::size_t slot = 0; slot < executionEngine.numSlots(); slot++) {
-		auto column = executionEngine.fromSlot(slot);
-		workingSlots.push_back(&newStorage.at(mTable.schema().getDefinition(column).index()));
-	}
-
-	executionEngine.setSlotStorage(std::move(workingSlots));
-}
-
-void SelectOperationExecutor::updateAllSlotsStorage(std::vector<ColumnStorage>& newStorage) {
-	updateSlotsStorage(newStorage, mFilterExecutionEngine);
-	for (auto& projection : mProjectionExecutionEngines) {
-		updateSlotsStorage(newStorage, *projection);
-	}
-
-	if (mOrderExecutionEngine) {
-		updateSlotsStorage(newStorage, *mOrderExecutionEngine);
-	}
-}
-
-void SelectOperationExecutor::executeSequentialScan(std::size_t numRows) {
-	for (std::size_t rowIndex = 0; rowIndex < numRows; rowIndex++) {
-		mFilterExecutionEngine.execute(rowIndex);
-
-		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
-			ExecutorHelpers::addRowToResult(mProjectionExecutionEngines, mReducedProjections.storage, mResult, rowIndex);
-
-			if (mOrderResult) {
-				addForOrdering(rowIndex);
-			}
-		}
-	}
-}
-
-bool SelectOperationExecutor::executeTreeIndexScan() {
-	std::vector<ColumnStorage> workingStorage;
-
+bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	auto& instructions = mFilterExecutionEngine.instructions();
 	std::int64_t indexedInstruction = -1;
 	for (std::size_t i = 0; i < instructions.size(); i++) {
@@ -367,7 +352,7 @@ bool SelectOperationExecutor::executeTreeIndexScan() {
 					compareInstruction->lhs,
 					compareInstruction->op,
 					compareInstruction->rhs,
-					workingStorage);
+					mWorkingStorage);
 			} else if (auto compareInstruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(instruction)) {
 				return treeIndexScan(
 					mTable,
@@ -375,7 +360,7 @@ bool SelectOperationExecutor::executeTreeIndexScan() {
 					compareInstruction->rhs,
 					otherSideCompareOp(compareInstruction->op),
 					compareInstruction->lhs,
-					workingStorage);
+					mWorkingStorage);
 			}
 
 			return false;
@@ -395,64 +380,35 @@ bool SelectOperationExecutor::executeTreeIndexScan() {
 		return false;
 	}
 
-	updateAllSlotsStorage(workingStorage);
+	ExpressionIROptimizer optimizer(mFilterExecutionEngine);
+	optimizer.optimize();
+
+	updateAllSlotsStorage(mWorkingStorage);
 
 	mReducedProjections = {};
 	mReducedProjections.tryReduce(
 		mOperation->projections,
 		[&](const std::string& column) {
-			return &workingStorage[mTable.schema().getDefinition(column).index()];
+			return &mWorkingStorage[mTable.schema().getDefinition(column).index()];
 		});
 
-	executeSequentialScan(workingStorage[0].size());
+	mNumRows = mWorkingStorage[0].size();
 	return true;
-
-//	auto treeIndexSearch = [&](std::size_t columnSlot, CompareOperator op, auto indexSearchValue) -> bool {
-//		if (mTable.primaryIndex().column().name() != mFilterExecutionEngine.fromSlot(columnSlot) || op == CompareOperator::NotEqual) {
-//			return false;
-//		}
-//
-//		using Type = decltype(indexSearchValue);
-//
-//		auto& underlyingIndex = mTable.primaryIndex().getUnderlyingStorage<Type>();
-//		auto iteratorRange = findTreeIndexIterators(underlyingIndex, op, indexSearchValue);
-//
-//		for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
-//			auto rowIndex = it->second;
-////			std::cout << rowIndex << std::endl;
-//			ExecutorHelpers::addRowToResult(
-//				mProjectionExecutionEngines,
-//				mReducedProjections.storage,
-//				mResult,
-//				rowIndex);
-//
-//			if (mOrderResult) {
-//				this->addForOrdering(rowIndex);
-//			}
-//		}
-//
-//		return true;
-//	};
-//
-//	return anyGenericType([&](auto dummy) {
-//		using Type = decltype(dummy);
-//
-//		if (hasReducedToOneInstruction()) {
-//			auto firstInstruction = mFilterExecutionEngine.instructions().front().get();
-//
-//			if (auto compareInstruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(firstInstruction)) {
-//				return treeIndexSearch(compareInstruction->lhs, compareInstruction->op, compareInstruction->rhs);
-//			} else if (auto compareInstruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(firstInstruction)) {
-//				return treeIndexSearch(compareInstruction->rhs, otherSideCompareOp(compareInstruction->op), compareInstruction->lhs);
-//			}
-//		}
-//
-//		return false;
-//	});
 }
 
 bool SelectOperationExecutor::executeDefault() {
-	executeSequentialScan(mTable.numRows());
+	for (std::size_t rowIndex = 0; rowIndex < mNumRows; rowIndex++) {
+		mFilterExecutionEngine.execute(rowIndex);
+
+		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
+			ExecutorHelpers::addRowToResult(mProjectionExecutionEngines, mReducedProjections.storage, mResult, rowIndex);
+
+			if (mOrderResult) {
+				addForOrdering(rowIndex);
+			}
+		}
+	}
+
 	return true;
 }
 
@@ -464,6 +420,8 @@ void SelectOperationExecutor::execute() {
 	}
 
 	mReducedProjections.tryReduce(mOperation->projections, mTable);
+
+	tryExecuteTreeIndexScan();
 
 	bool executed = false;
 	for (auto& executor : mExecutors) {
