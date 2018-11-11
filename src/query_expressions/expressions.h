@@ -84,15 +84,15 @@ struct QueryBoolExpression : public QueryExpression {
  * Represents and query expression
  */
 struct QueryAndExpression : public QueryBoolExpression {
-	std::unique_ptr<QueryBoolExpression> lhs;
-	std::unique_ptr<QueryBoolExpression> rhs;
+	std::unique_ptr<QueryExpression> lhs;
+	std::unique_ptr<QueryExpression> rhs;
 
 	/**
 	 * Creates a new And expression
 	 * @param lhs The lhs
 	 * @param rhs The rhs
 	 */
-	QueryAndExpression(std::unique_ptr<QueryBoolExpression> lhs, std::unique_ptr<QueryBoolExpression> rhs);
+	QueryAndExpression(std::unique_ptr<QueryExpression> lhs, std::unique_ptr<QueryExpression> rhs);
 
 	virtual void accept(QueryExpressionVisitor& visitor, QueryExpression* parent) override;
 	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) override;

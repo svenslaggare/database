@@ -184,7 +184,7 @@ namespace {
 	using TreeIndexIterator = typename TreeIndex::UnderlyingStorage<T>::const_iterator;
 
 	template<typename T>
-	std::pair<TreeIndexIterator<T>,	TreeIndexIterator<T>> findTreeIndexIterators(const TreeIndex::UnderlyingStorage<T>& underlyingIndex,
+	std::pair<TreeIndexIterator<T>, TreeIndexIterator<T>> findTreeIndexIterators(const TreeIndex::UnderlyingStorage<T>& underlyingIndex,
 																				 CompareOperator op,
 																				 const T& indexSearchValue) {
 		auto startIterator = underlyingIndex.end();
@@ -265,8 +265,8 @@ namespace {
 		}
 	}
 
-	bool canTreeIndexScan(const Table& table, const std::string& column, CompareOperator op) {
-		return table.primaryIndex().column().name() != column || op == CompareOperator::NotEqual;
+	bool canTreeIndexScan(const TreeIndex& index, const std::string& column, CompareOperator op) {
+		return index.column().name() != column || op == CompareOperator::NotEqual;
 	}
 
 	template<typename T>
@@ -276,38 +276,42 @@ namespace {
 					   CompareOperator op,
 					   T indexSearchValue,
 					   std::vector<ColumnStorage>& workingStorage) {
-		if (canTreeIndexScan(table, filterExecutionEngine.fromSlot(columnSlot), op)) {
-			return false;
-		}
-
-		std::vector<const ColumnStorage*> columnsStorage;
-		for (auto& column : table.schema().columns()) {
-			workingStorage.emplace_back(column);
-			columnsStorage.push_back(&table.getColumn(column.name()));
-		}
-
-		using Type = decltype(indexSearchValue);
-
-		auto& underlyingIndex = table.primaryIndex().getUnderlyingStorage<Type>();
-		auto iteratorRange = findTreeIndexIterators(underlyingIndex, op, indexSearchValue);
-
-		for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
-			auto rowIndex = it->second;
-
-			for (std::size_t columnIndex = 0; columnIndex < table.schema().columns().size(); columnIndex++) {
-				auto& columnStorage = columnsStorage[columnIndex];
-				auto& resultStorage = workingStorage[columnIndex];
-
-				auto handleForType = [&](auto dummy) {
-					using Type = decltype(dummy);
-					resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
-				};
-
-				handleGenericType(columnStorage->type(), handleForType);
+		for (auto& index : table.indices()) {
+			if (canTreeIndexScan(*index, filterExecutionEngine.fromSlot(columnSlot), op)) {
+				return false;
 			}
+
+			std::vector<const ColumnStorage*> columnsStorage;
+			for (auto& column : table.schema().columns()) {
+				workingStorage.emplace_back(column);
+				columnsStorage.push_back(&table.getColumn(column.name()));
+			}
+
+			using Type = decltype(indexSearchValue);
+
+			auto& underlyingIndex = index->getUnderlyingStorage<Type>();
+			auto iteratorRange = findTreeIndexIterators(underlyingIndex, op, indexSearchValue);
+
+			for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
+				auto rowIndex = it->second;
+
+				for (std::size_t columnIndex = 0; columnIndex < table.schema().columns().size(); columnIndex++) {
+					auto& columnStorage = columnsStorage[columnIndex];
+					auto& resultStorage = workingStorage[columnIndex];
+
+					auto handleForType = [&](auto dummy) {
+						using Type = decltype(dummy);
+						resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
+					};
+
+					handleGenericType(columnStorage->type(), handleForType);
+				}
+			}
+
+			return true;
 		}
 
-		return true;
+		return false;
 	}
 }
 
@@ -329,6 +333,20 @@ void SelectOperationExecutor::updateAllSlotsStorage(std::vector<ColumnStorage>& 
 
 	if (mOrderExecutionEngine) {
 		updateSlotsStorage(newStorage, *mOrderExecutionEngine);
+	}
+}
+
+void SelectOperationExecutor::executeSequentialScan(std::size_t numRows) {
+	for (std::size_t rowIndex = 0; rowIndex < numRows; rowIndex++) {
+		mFilterExecutionEngine.execute(rowIndex);
+
+		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
+			ExecutorHelpers::addRowToResult(mProjectionExecutionEngines, mReducedProjections.storage, mResult, rowIndex);
+
+			if (mOrderResult) {
+				addForOrdering(rowIndex);
+			}
+		}
 	}
 }
 
@@ -378,7 +396,7 @@ bool SelectOperationExecutor::executeTreeIndexScan() {
 	}
 
 	updateAllSlotsStorage(workingStorage);
-	
+
 	mReducedProjections = {};
 	mReducedProjections.tryReduce(
 		mOperation->projections,
@@ -386,18 +404,7 @@ bool SelectOperationExecutor::executeTreeIndexScan() {
 			return &workingStorage[mTable.schema().getDefinition(column).index()];
 		});
 
-	for (std::size_t rowIndex = 0; rowIndex < workingStorage[0].size(); rowIndex++) {
-		mFilterExecutionEngine.execute(rowIndex);
-
-		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
-			ExecutorHelpers::addRowToResult(mProjectionExecutionEngines, mReducedProjections.storage, mResult, rowIndex);
-
-			if (mOrderResult) {
-				addForOrdering(rowIndex);
-			}
-		}
-	}
-
+	executeSequentialScan(workingStorage[0].size());
 	return true;
 
 //	auto treeIndexSearch = [&](std::size_t columnSlot, CompareOperator op, auto indexSearchValue) -> bool {
@@ -445,18 +452,7 @@ bool SelectOperationExecutor::executeTreeIndexScan() {
 }
 
 bool SelectOperationExecutor::executeDefault() {
-	for (std::size_t rowIndex = 0; rowIndex < mTable.numRows(); rowIndex++) {
-		mFilterExecutionEngine.execute(rowIndex);
-
-		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
-			ExecutorHelpers::addRowToResult(mProjectionExecutionEngines, mReducedProjections.storage, mResult, rowIndex);
-
-			if (mOrderResult) {
-				addForOrdering(rowIndex);
-			}
-		}
-	}
-
+	executeSequentialScan(mTable.numRows());
 	return true;
 }
 

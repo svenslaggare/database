@@ -48,13 +48,15 @@ class Schema {
 private:
 	std::string mName;
 	std::vector<ColumnDefinition> mColumns;
+	std::vector<std::string> mIndices;
 public:
 	/**
 	 * Creates a new schema
 	 * @param name The name of the table
 	 * @param columns The columns
+	 * @param indices The indices
 	 */
-	Schema(const std::string& name, std::vector<ColumnDefinition> columns);
+	Schema(const std::string& name, std::vector<ColumnDefinition> columns, std::vector<std::string> indices);
 
 	/**
 	 * Returns the name of the schema
@@ -71,6 +73,11 @@ public:
 	 * @param name The name of the column
 	 */
 	const ColumnDefinition& getDefinition(const std::string& name) const;
+
+	/**
+	 * Returns the indices
+	 */
+	const std::vector<std::string>& indices() const;
 };
 
 /**
@@ -82,7 +89,7 @@ private:
 	std::unordered_map<std::string, ColumnStorage> mColumnsStorage;
 	std::vector<ColumnStorage*> mColumnIndexToStorage;
 
-	TreeIndex mPrimaryIndex;
+	std::vector<std::unique_ptr<TreeIndex>> mIndices;
 public:
 	/**
 	 * Creates a new table
@@ -96,9 +103,9 @@ public:
 	const Schema& schema() const;
 
 	/**
-	 * Returns the primary index
+	 * Returns the indices
 	 */
-	const TreeIndex& primaryIndex() const;
+	const std::vector<std::unique_ptr<TreeIndex>>& indices() const;
 
 	/**
 	 * Returns the number of rows in the table
@@ -117,8 +124,10 @@ public:
 		std::size_t rowIndex = columnStorage.size();
 		columnStorage.getUnderlyingStorage<T>().push_back(value);
 
-		if (name == mPrimaryIndex.column().name()) {
-			mPrimaryIndex.insert(value, rowIndex);
+		for (auto& index : mIndices) {
+			if (index->column().name() == name) {
+				index->insert(value, rowIndex);
+			}
 		}
 	}
 

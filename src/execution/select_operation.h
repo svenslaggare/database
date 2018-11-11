@@ -43,6 +43,8 @@ private:
 	bool executeFilterRightIsColumn();
 	bool executeFilterBothColumn();
 
+	void executeSequentialScan(std::size_t numRows);
+
 	bool executeTreeIndexScan();
 	bool executeDefault();
 public:

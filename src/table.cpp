@@ -16,8 +16,8 @@ std::size_t ColumnDefinition::index() const {
 	return mIndex;
 }
 
-Schema::Schema(const std::string& name, std::vector<ColumnDefinition> columns)
-	: mName(name), mColumns(std::move(columns)) {
+Schema::Schema(const std::string& name, std::vector<ColumnDefinition> columns, std::vector<std::string> indices)
+	: mName(name), mColumns(std::move(columns)), mIndices(std::move(indices)) {
 
 }
 
@@ -35,12 +35,20 @@ const ColumnDefinition& Schema::getDefinition(const std::string& name) const {
 	throw std::runtime_error("Element not found.");
 }
 
+const std::vector<std::string>& Schema::indices() const {
+	return mIndices;
+}
+
 const std::vector<ColumnDefinition>& Schema::columns() const {
 	return mColumns;
 }
 
 Table::Table(Schema schema)
-	: mSchema(std::move(schema)), mPrimaryIndex(mSchema.columns()[0]) {
+	: mSchema(std::move(schema)) {
+	for (auto& indexColumn : mSchema.indices()) {
+		mIndices.push_back(std::make_unique<TreeIndex>(mSchema.getDefinition(indexColumn)));
+	}
+
 	for (auto& column : mSchema.columns()) {
 		mColumnsStorage.emplace(column.name(), ColumnStorage(column));
 	}
@@ -54,8 +62,8 @@ const Schema& Table::schema() const {
 	return mSchema;
 }
 
-const TreeIndex& Table::primaryIndex() const {
-	return mPrimaryIndex;
+const std::vector<std::unique_ptr<TreeIndex>>& Table::indices() const {
+	return mIndices;
 }
 
 std::size_t Table::numRows() const {

@@ -115,6 +115,12 @@ public:
 	void addInstruction(std::unique_ptr<ExpressionIR> instruction);
 
 	/**
+	 * Removes the instruction at the given index
+	 * @param index The index of the instruction to remove
+	 */
+	void removeInstruction(std::size_t index);
+
+	/**
 	 * Removes the last instruction
 	 */
 	void removeLastInstruction();

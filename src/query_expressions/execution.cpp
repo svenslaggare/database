@@ -15,6 +15,10 @@ void ExpressionExecutionEngine::addInstruction(std::unique_ptr<ExpressionIR> ins
 	mInstructions.push_back(std::move(instruction));
 }
 
+void ExpressionExecutionEngine::removeInstruction(std::size_t index) {
+	mInstructions.erase(mInstructions.begin() + index);
+}
+
 void ExpressionExecutionEngine::removeLastInstruction() {
 	mInstructions.erase(mInstructions.end() - 1);
 }
