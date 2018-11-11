@@ -15,13 +15,15 @@ class ColumnDefinition {
 private:
 	std::string mName;
 	ColumnType mType;
+	std::size_t mIndex;
 public:
 	/**
 	 * Creates a new column definition
 	 * @param name The name of the column
 	 * @param type The type of the column
+	 * @param index The index of the column
 	 */
-	ColumnDefinition(const std::string& name, ColumnType type);
+	ColumnDefinition(std::size_t index, const std::string& name, ColumnType type);
 
 	/**
 	 * Returns the namn of the column
@@ -32,6 +34,11 @@ public:
 	 * Returns the type of the column
 	 */
 	ColumnType type() const;
+
+	/**
+	 * Returns the index of the column
+	 */
+	std::size_t index() const;
 };
 
 /**
@@ -41,14 +48,13 @@ class Schema {
 private:
 	std::string mName;
 	std::vector<ColumnDefinition> mColumns;
-
 public:
 	/**
 	 * Creates a new schema
 	 * @param name The name of the table
 	 * @param columns The columns
 	 */
-	Schema(std::string name, std::vector<ColumnDefinition> columns);
+	Schema(const std::string& name, std::vector<ColumnDefinition> columns);
 
 	/**
 	 * Returns the name of the schema

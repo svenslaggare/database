@@ -1,7 +1,7 @@
 #include "table.h"
 
-ColumnDefinition::ColumnDefinition(const std::string& name, ColumnType type)
-	:  mName(name), mType(type) {
+ColumnDefinition::ColumnDefinition(std::size_t index, const std::string& name, ColumnType type)
+	:  mName(name), mType(type), mIndex(index) {
 
 }
 const std::string& ColumnDefinition::name() const {
@@ -12,7 +12,11 @@ ColumnType ColumnDefinition::type() const {
 	return mType;
 }
 
-Schema::Schema(std::string name, std::vector<ColumnDefinition> columns)
+std::size_t ColumnDefinition::index() const {
+	return mIndex;
+}
+
+Schema::Schema(const std::string& name, std::vector<ColumnDefinition> columns)
 	: mName(name), mColumns(std::move(columns)) {
 
 }

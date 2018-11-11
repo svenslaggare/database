@@ -115,7 +115,8 @@ void ExecutorHelpers::orderResult(ColumnType orderDataType, const std::vector<Ra
 	}
 }
 
-void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, Table& table) {
+void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections,
+								   std::function<ColumnStorage* (const std::string&)> getColumnStorage) {
 	allReduced = true;
 
 	for (auto& projection : projections) {
@@ -130,11 +131,15 @@ void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>
 
 	for (auto& column : columns) {
 		if (!column.empty()) {
-			storage.push_back(&table.getColumn(column));
+			storage.push_back(getColumnStorage(column));
 		} else {
 			storage.push_back(nullptr);
 		}
 	}
+}
+
+void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, Table& table) {
+	tryReduce(projections, [&](const std::string& column) { return &table.getColumn(column); });
 }
 
 std::int64_t ReducedProjections::indexOfColumn(const std::string& name) {
@@ -148,4 +153,16 @@ std::int64_t ReducedProjections::indexOfColumn(const std::string& name) {
 	}
 
 	return -1;
+}
+
+void ReducedProjections::clear() {
+	for (auto& column : storage) {
+		column = nullptr;
+	}
+
+	for (auto& column : columns) {
+		column = "";
+	}
+
+	allReduced = false;
 }

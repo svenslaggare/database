@@ -32,6 +32,11 @@ private:
 
 	void addForOrdering(std::size_t rowIndex);
 
+	void updateSlotsStorage(std::vector<ColumnStorage>& newStorage,
+							ExpressionExecutionEngine& executionEngine);
+
+	void updateAllSlotsStorage(std::vector<ColumnStorage>& newStorage);
+
 	bool executeNoFilter();
 
 	bool executeFilterLeftIsColumn();

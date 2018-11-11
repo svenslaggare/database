@@ -62,6 +62,14 @@ struct ReducedProjections {
 	/**
 	 * Tries to reduce the given projections
 	 * @param projections The projection
+	 * @param getColumnStorage Function for getting the storage of a column
+	 */
+	void tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections,
+				   std::function<ColumnStorage* (const std::string&)> getColumnStorage);
+
+	/**
+	 * Tries to reduce the given projections
+	 * @param projections The projection
 	 * @param table The table
 	 */
 	void tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, Table& table);
@@ -71,4 +79,9 @@ struct ReducedProjections {
 	 * @param name The name of the column
 	 */
 	std::int64_t indexOfColumn(const std::string& name);
+
+	/**
+	 * Clears all reduced projections
+	 */
+	void clear();
 };

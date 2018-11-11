@@ -41,6 +41,11 @@ public:
 	}
 
 	/**
+	 * Returns the number of slots
+	 */
+	std::size_t numSlots() const;
+
+	/**
 	 * Returns the slot for the given column
 	 * @param name The name of the column
 	 */
@@ -57,6 +62,12 @@ public:
 	 * @param table The table
 	 */
 	void fillSlots(Table& table);
+
+	/**
+	 * Sets the slot storage
+	 * @param storage The storage
+	 */
+	void setSlotStorage(std::vector<ColumnStorage*> storage);
 
 	/**
 	 * Returns the type of the final expression
@@ -107,6 +118,13 @@ public:
 	 * Removes the last instruction
 	 */
 	void removeLastInstruction();
+
+	/**
+	 * Replaces the given instruction
+	 * @param index The index to replace at
+	 * @param instruction The new instruction
+	 */
+	void replaceInstruction(std::size_t index, std::unique_ptr<ExpressionIR> instruction);
 
 	/**
 	 * Executes the expression on the given row

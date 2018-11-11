@@ -19,6 +19,14 @@ void ExpressionExecutionEngine::removeLastInstruction() {
 	mInstructions.erase(mInstructions.end() - 1);
 }
 
+void ExpressionExecutionEngine::replaceInstruction(std::size_t index, std::unique_ptr<ExpressionIR> instruction) {
+	mInstructions.at(index) = std::move(instruction);
+}
+
+std::size_t ExpressionExecutionEngine::numSlots() const {
+	return mSlottedColumnStorage.size();
+}
+
 std::size_t ExpressionExecutionEngine::getSlot(const std::string& name) {
 	if (mColumnNameToSlot.count(name) == 0) {
 		mColumnNameToSlot[name] = mNextColumnSlot++;
@@ -42,6 +50,10 @@ void ExpressionExecutionEngine::fillSlots(Table& table) {
 	for (auto& column : mColumnNameToSlot) {
 		mSlottedColumnStorage[column.second] = &table.getColumn(column.first);
 	}
+}
+
+void ExpressionExecutionEngine::setSlotStorage(std::vector<ColumnStorage*> storage) {
+	mSlottedColumnStorage = std::move(storage);
 }
 
 ColumnType ExpressionExecutionEngine::expressionType() const {

@@ -247,73 +247,201 @@ namespace {
 
 		return std::make_pair(startIterator, endIterator);
 	}
-}
 
-bool SelectOperationExecutor::executeTreeIndexScan() {
-	auto treeIndexSearch = [&](std::size_t columnSlot, CompareOperator op, auto indexSearchValue) -> bool {
-		if (mTable.primaryIndex().column().name() != mFilterExecutionEngine.fromSlot(columnSlot) || op == CompareOperator::NotEqual) {
+	CompareOperator otherSideCompareOp(CompareOperator op) {
+		switch (op) {
+			case CompareOperator::Equal:
+				return CompareOperator::Equal;
+			case CompareOperator::NotEqual:
+				return CompareOperator::NotEqual;
+			case CompareOperator::LessThan:
+				return CompareOperator::GreaterThan;
+			case CompareOperator::LessThanOrEqual:
+				return CompareOperator::GreaterThanOrEqual;
+			case CompareOperator::GreaterThan:
+				return CompareOperator::LessThan;
+			case CompareOperator::GreaterThanOrEqual:
+				return CompareOperator::LessThanOrEqual;
+		}
+	}
+
+	bool canTreeIndexScan(const Table& table, const std::string& column, CompareOperator op) {
+		return table.primaryIndex().column().name() != column || op == CompareOperator::NotEqual;
+	}
+
+	template<typename T>
+	bool treeIndexScan(const Table& table,
+					   ExpressionExecutionEngine& filterExecutionEngine,
+					   std::size_t columnSlot,
+					   CompareOperator op,
+					   T indexSearchValue,
+					   std::vector<ColumnStorage>& workingStorage) {
+		if (canTreeIndexScan(table, filterExecutionEngine.fromSlot(columnSlot), op)) {
 			return false;
+		}
+
+		std::vector<const ColumnStorage*> columnsStorage;
+		for (auto& column : table.schema().columns()) {
+			workingStorage.emplace_back(column);
+			columnsStorage.push_back(&table.getColumn(column.name()));
 		}
 
 		using Type = decltype(indexSearchValue);
 
-		auto& underlyingIndex = mTable.primaryIndex().getUnderlyingStorage<Type>();
+		auto& underlyingIndex = table.primaryIndex().getUnderlyingStorage<Type>();
 		auto iteratorRange = findTreeIndexIterators(underlyingIndex, op, indexSearchValue);
 
 		for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
 			auto rowIndex = it->second;
-//			std::cout << rowIndex << std::endl;
-			ExecutorHelpers::addRowToResult(
-				mProjectionExecutionEngines,
-				mReducedProjections.storage,
-				mResult,
-				rowIndex);
 
-			if (mOrderResult) {
-				this->addForOrdering(rowIndex);
+			for (std::size_t columnIndex = 0; columnIndex < table.schema().columns().size(); columnIndex++) {
+				auto& columnStorage = columnsStorage[columnIndex];
+				auto& resultStorage = workingStorage[columnIndex];
+
+				auto handleForType = [&](auto dummy) {
+					using Type = decltype(dummy);
+					resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
+				};
+
+				handleGenericType(columnStorage->type(), handleForType);
 			}
 		}
 
 		return true;
-	};
+	}
+}
 
-	return anyGenericType([&](auto dummy) {
-		using Type = decltype(dummy);
+void SelectOperationExecutor::updateSlotsStorage(std::vector<ColumnStorage>& newStorage, ExpressionExecutionEngine& executionEngine) {
+	std::vector<ColumnStorage*> workingSlots;
+	for (std::size_t slot = 0; slot < executionEngine.numSlots(); slot++) {
+		auto column = executionEngine.fromSlot(slot);
+		workingSlots.push_back(&newStorage.at(mTable.schema().getDefinition(column).index()));
+	}
 
-		if (hasReducedToOneInstruction()) {
-			auto firstInstruction = mFilterExecutionEngine.instructions().front().get();
+	executionEngine.setSlotStorage(std::move(workingSlots));
+}
 
-			if (auto compareInstruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(firstInstruction)) {
-				return treeIndexSearch(compareInstruction->lhs, compareInstruction->op, compareInstruction->rhs);
-			} else if (auto compareInstruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(firstInstruction)) {
-				CompareOperator op;
-				switch (compareInstruction->op) {
-					case CompareOperator::Equal:
-						op = CompareOperator::Equal;
-						break;
-					case CompareOperator::NotEqual:
-						op = CompareOperator::NotEqual;
-						break;
-					case CompareOperator::LessThan:
-						op = CompareOperator::GreaterThan;
-						break;
-					case CompareOperator::LessThanOrEqual:
-						op = CompareOperator::GreaterThanOrEqual;
-						break;
-					case CompareOperator::GreaterThan:
-						op = CompareOperator::LessThan;
-						break;
-					case CompareOperator::GreaterThanOrEqual:
-						op = CompareOperator::LessThanOrEqual;
-						break;
-				}
+void SelectOperationExecutor::updateAllSlotsStorage(std::vector<ColumnStorage>& newStorage) {
+	updateSlotsStorage(newStorage, mFilterExecutionEngine);
+	for (auto& projection : mProjectionExecutionEngines) {
+		updateSlotsStorage(newStorage, *projection);
+	}
 
-				return treeIndexSearch(compareInstruction->rhs, op, compareInstruction->lhs);
+	if (mOrderExecutionEngine) {
+		updateSlotsStorage(newStorage, *mOrderExecutionEngine);
+	}
+}
+
+bool SelectOperationExecutor::executeTreeIndexScan() {
+	std::vector<ColumnStorage> workingStorage;
+
+	auto& instructions = mFilterExecutionEngine.instructions();
+	std::int64_t indexedInstruction = -1;
+	for (std::size_t i = 0; i < instructions.size(); i++) {
+		auto instruction = instructions[i].get();
+		auto indexed = anyGenericType([&](auto dummy) {
+			using Type = decltype(dummy);
+
+			if (auto compareInstruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(instruction)) {
+				return treeIndexScan(
+					mTable,
+					mFilterExecutionEngine,
+					compareInstruction->lhs,
+					compareInstruction->op,
+					compareInstruction->rhs,
+					workingStorage);
+			} else if (auto compareInstruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(instruction)) {
+				return treeIndexScan(
+					mTable,
+					mFilterExecutionEngine,
+					compareInstruction->rhs,
+					otherSideCompareOp(compareInstruction->op),
+					compareInstruction->lhs,
+					workingStorage);
+			}
+
+			return false;
+		});
+
+		if (indexed) {
+			indexedInstruction = i;
+			break;
+		}
+	}
+
+	if (indexedInstruction != -1) {
+		mFilterExecutionEngine.replaceInstruction(
+			(std::size_t)indexedInstruction,
+			std::make_unique<QueryValueExpressionIR>(QueryValue(true)));
+	} else {
+		return false;
+	}
+
+	updateAllSlotsStorage(workingStorage);
+	
+	mReducedProjections = {};
+	mReducedProjections.tryReduce(
+		mOperation->projections,
+		[&](const std::string& column) {
+			return &workingStorage[mTable.schema().getDefinition(column).index()];
+		});
+
+	for (std::size_t rowIndex = 0; rowIndex < workingStorage[0].size(); rowIndex++) {
+		mFilterExecutionEngine.execute(rowIndex);
+
+		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
+			ExecutorHelpers::addRowToResult(mProjectionExecutionEngines, mReducedProjections.storage, mResult, rowIndex);
+
+			if (mOrderResult) {
+				addForOrdering(rowIndex);
 			}
 		}
+	}
 
-		return false;
-	});
+	return true;
+
+//	auto treeIndexSearch = [&](std::size_t columnSlot, CompareOperator op, auto indexSearchValue) -> bool {
+//		if (mTable.primaryIndex().column().name() != mFilterExecutionEngine.fromSlot(columnSlot) || op == CompareOperator::NotEqual) {
+//			return false;
+//		}
+//
+//		using Type = decltype(indexSearchValue);
+//
+//		auto& underlyingIndex = mTable.primaryIndex().getUnderlyingStorage<Type>();
+//		auto iteratorRange = findTreeIndexIterators(underlyingIndex, op, indexSearchValue);
+//
+//		for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
+//			auto rowIndex = it->second;
+////			std::cout << rowIndex << std::endl;
+//			ExecutorHelpers::addRowToResult(
+//				mProjectionExecutionEngines,
+//				mReducedProjections.storage,
+//				mResult,
+//				rowIndex);
+//
+//			if (mOrderResult) {
+//				this->addForOrdering(rowIndex);
+//			}
+//		}
+//
+//		return true;
+//	};
+//
+//	return anyGenericType([&](auto dummy) {
+//		using Type = decltype(dummy);
+//
+//		if (hasReducedToOneInstruction()) {
+//			auto firstInstruction = mFilterExecutionEngine.instructions().front().get();
+//
+//			if (auto compareInstruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(firstInstruction)) {
+//				return treeIndexSearch(compareInstruction->lhs, compareInstruction->op, compareInstruction->rhs);
+//			} else if (auto compareInstruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(firstInstruction)) {
+//				return treeIndexSearch(compareInstruction->rhs, otherSideCompareOp(compareInstruction->op), compareInstruction->lhs);
+//			}
+//		}
+//
+//		return false;
+//	});
 }
 
 bool SelectOperationExecutor::executeDefault() {
