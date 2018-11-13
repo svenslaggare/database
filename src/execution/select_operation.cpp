@@ -75,7 +75,7 @@ bool SelectOperationExecutor::executeNoFilter() {
 
 						auto handleForType = [&](auto dummy) {
 							using Type = decltype(dummy);
-							resultStorage.getUnderlyingStorage<Type>() = this->mTable.getColumnValues<Type>(column);
+							resultStorage.getUnderlyingStorage<Type>() = this->mReducedProjections.getStorage(column)->getUnderlyingStorage<Type>();
 
 							if (mOrderResult) {
 								if ((std::size_t)reducedIndex == columnIndex) {
@@ -90,7 +90,7 @@ bool SelectOperationExecutor::executeNoFilter() {
 						columnIndex++;
 					}
 				} else {
-					for (std::size_t rowIndex = 0; rowIndex < this->mTable.numRows(); rowIndex++) {
+					for (std::size_t rowIndex = 0; rowIndex < mNumRows; rowIndex++) {
 						ExecutorHelpers::addRowToResult(this->mReducedProjections.storage, this->mResult, rowIndex);
 						addForOrdering(rowIndex);
 					}
@@ -103,8 +103,6 @@ bool SelectOperationExecutor::executeNoFilter() {
 
 	return false;
 }
-
-
 
 bool SelectOperationExecutor::executeFilterLeftIsColumn() {
 	if (hasReducedToOneInstruction() && mReducedProjections.allReduced) {

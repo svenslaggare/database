@@ -142,7 +142,7 @@ void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>
 	tryReduce(projections, [&](const std::string& column) { return &table.getColumn(column); });
 }
 
-std::int64_t ReducedProjections::indexOfColumn(const std::string& name) {
+std::int64_t ReducedProjections::indexOfColumn(const std::string& name) const {
 	std::size_t currentIndex = 0;
 	for (auto& column : columns) {
 		if (column == name) {
@@ -153,6 +153,10 @@ std::int64_t ReducedProjections::indexOfColumn(const std::string& name) {
 	}
 
 	return -1;
+}
+
+ColumnStorage* ReducedProjections::getStorage(const std::string& name) const {
+	return storage[indexOfColumn(name)];
 }
 
 void ReducedProjections::clear() {

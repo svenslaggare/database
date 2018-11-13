@@ -78,7 +78,13 @@ struct ReducedProjections {
 	 * Returns the index of the reduced column
 	 * @param name The name of the column
 	 */
-	std::int64_t indexOfColumn(const std::string& name);
+	std::int64_t indexOfColumn(const std::string& name) const;
+
+	/**
+	 * Returns the storage of the given column
+	 * @param name The name of the column
+	 */
+	ColumnStorage* getStorage(const std::string& name) const;
 
 	/**
 	 * Clears all reduced projections
