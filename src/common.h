@@ -68,13 +68,13 @@ inline bool anyType(std::function<bool ()> boolHandle, std::function<bool ()> in
 	 [&]() { return handle((std::int32_t)0); },\
 	 [&]() { return handle((float)0); })
 
-constexpr std::size_t MAX_VALUE_SIZE = std::max(std::max(sizeof(bool), sizeof(std::int32_t)), sizeof(float));
+constexpr std::size_t MAX_QUERY_VALUE_SIZE = std::max(std::max(sizeof(bool), sizeof(std::int32_t)), sizeof(float));
 
 /**
  * Represents a raw query value
  */
 struct RawQueryValue {
-	std::uint8_t data[MAX_VALUE_SIZE];
+	std::uint8_t data[MAX_QUERY_VALUE_SIZE];
 
 	/**
 	 * Returns the underlying value

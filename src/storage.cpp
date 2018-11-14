@@ -11,13 +11,8 @@ std::unique_ptr<std::uint8_t[]> ColumnStorage::createUnderlyingStorage(ColumnTyp
 }
 
 ColumnStorage::ColumnStorage(ColumnType type)
-	: mType(type) {
-	auto handleForType = [&](auto dummy) {
-		using Type = decltype(dummy);
-		mUnderlyingStorage = std::unique_ptr<std::uint8_t[]>((std::uint8_t*)(new UnderlyingColumnStorage<Type>()));
-	};
+	: mType(type), mUnderlyingStorage(createUnderlyingStorage(mType)) {
 
-	handleGenericType(type, handleForType);
 }
 
 ColumnStorage::ColumnStorage(const ColumnDefinition& column)

@@ -288,20 +288,68 @@ namespace {
 	}
 
 	bool canTreeIndexScan(const TreeIndex& index, const std::string& column, CompareOperator op) {
-		return index.column().name() != column || op == CompareOperator::NotEqual;
+		return index.column().name() == column && op != CompareOperator::NotEqual;
 	}
 
-	template<typename T>
-	bool treeIndexScan(const Table& table,
-					   ExpressionExecutionEngine& filterExecutionEngine,
-					   std::size_t columnSlot,
-					   CompareOperator op,
-					   T indexSearchValue,
-					   std::vector<ColumnStorage>& workingStorage) {
-		for (auto& index : table.indices()) {
-			if (canTreeIndexScan(*index, filterExecutionEngine.fromSlot(columnSlot), op)) {
+	struct PossibleIndexScan {
+		std::size_t instructionIndex;
+
+		TreeIndex& index;
+
+		std::size_t columnSlot;
+		CompareOperator op;
+		QueryValue indexSearchValue;
+
+		PossibleIndexScan(std::size_t instructionIndex, TreeIndex& index, std::size_t columnSlot, CompareOperator op, QueryValue indexSearchValue)
+			: instructionIndex(instructionIndex),
+			  index(index),
+			  columnSlot(columnSlot),
+			  op(op),
+			  indexSearchValue(indexSearchValue) {
+
+		}
+	};
+
+	std::vector<PossibleIndexScan> findPossibleIndexScans(const Table& table, ExpressionExecutionEngine& executionEngine) {
+		std::vector<PossibleIndexScan> possibleScans;
+
+		for (std::size_t instructionIndex = 0; instructionIndex < executionEngine.instructions().size(); instructionIndex++) {
+			auto instruction = executionEngine.instructions()[instructionIndex].get();
+
+			auto tryAddIndexScan = [&](std::size_t columnSlot, CompareOperator op, QueryValue indexSearchValue) {
+				for (auto& index : table.indices()) {
+					if (canTreeIndexScan(*index, executionEngine.fromSlot(columnSlot), op)) {
+						possibleScans.emplace_back(instructionIndex, *index, columnSlot, op, indexSearchValue);
+					}
+				}
+			};
+
+			auto handleForType = [&](auto dummy) {
+				using Type = decltype(dummy);
+
+				if (auto compareInstruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(instruction)) {
+					tryAddIndexScan(compareInstruction->lhs, compareInstruction->op, QueryValue(compareInstruction->rhs));
+					return true;
+				} else if (auto compareInstruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(instruction)) {
+					tryAddIndexScan(compareInstruction->rhs, otherSideCompareOp(compareInstruction->op), QueryValue(compareInstruction->lhs));
+					return true;
+				}
+
 				return false;
-			}
+			};
+
+			anyGenericType(handleForType);
+		}
+
+		return possibleScans;
+	}
+
+	void treeIndexScan(const Table& table,
+					   ExpressionExecutionEngine& filterExecutionEngine,
+					   const PossibleIndexScan& indexScan,
+					   std::vector<ColumnStorage>& workingStorage) {
+		auto handleSearchForType = [&](auto dummy) -> void {
+			using Type = decltype(dummy);
 
 			std::vector<const ColumnStorage*> columnsStorage;
 			for (auto& column : table.schema().columns()) {
@@ -309,8 +357,11 @@ namespace {
 				columnsStorage.push_back(&table.getColumn(column.name()));
 			}
 
-			auto& underlyingIndex = index->getUnderlyingStorage<T>();
-			auto iteratorRange = findTreeIndexIterators(underlyingIndex, op, indexSearchValue);
+			auto& underlyingIndex = indexScan.index.getUnderlyingStorage<Type>();
+			auto iteratorRange = findTreeIndexIterators(
+				underlyingIndex,
+				indexScan.op,
+				indexScan.indexSearchValue.getValue<Type>());
 
 			for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
 				auto rowIndex = it->second;
@@ -327,52 +378,20 @@ namespace {
 					handleGenericType(columnStorage->type(), handleForType);
 				}
 			}
+		};
 
-			return true;
-		}
-
-		return false;
+		handleGenericType(indexScan.indexSearchValue.type, handleSearchForType);
 	}
 }
 
 bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
-	auto& instructions = mFilterExecutionEngine.instructions();
-	std::int64_t indexedInstruction = -1;
-	for (std::size_t i = 0; i < instructions.size(); i++) {
-		auto instruction = instructions[i].get();
-		auto indexed = anyGenericType([&](auto dummy) {
-			using Type = decltype(dummy);
+	auto possibleIndexScans = findPossibleIndexScans(mTable, mFilterExecutionEngine);
+	if (!possibleIndexScans.empty()) {
+		auto& indexScan = possibleIndexScans.front();
+		treeIndexScan(mTable, mFilterExecutionEngine, indexScan, mWorkingStorage);
 
-			if (auto compareInstruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(instruction)) {
-				return treeIndexScan(
-					mTable,
-					mFilterExecutionEngine,
-					compareInstruction->lhs,
-					compareInstruction->op,
-					compareInstruction->rhs,
-					mWorkingStorage);
-			} else if (auto compareInstruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(instruction)) {
-				return treeIndexScan(
-					mTable,
-					mFilterExecutionEngine,
-					compareInstruction->rhs,
-					otherSideCompareOp(compareInstruction->op),
-					compareInstruction->lhs,
-					mWorkingStorage);
-			}
-
-			return false;
-		});
-
-		if (indexed) {
-			indexedInstruction = i;
-			break;
-		}
-	}
-
-	if (indexedInstruction != -1) {
 		mFilterExecutionEngine.replaceInstruction(
-			(std::size_t)indexedInstruction,
+			indexScan.instructionIndex,
 			std::make_unique<QueryValueExpressionIR>(QueryValue(true)));
 	} else {
 		return false;
