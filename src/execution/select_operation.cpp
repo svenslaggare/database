@@ -2,6 +2,7 @@
 #include "../query_expressions/compiler.h"
 #include "../helpers.h"
 #include "../query_expressions/ir_optimizer.h"
+#include "index_scanner.h"
 
 #include <iostream>
 #include <algorithm>
@@ -114,14 +115,13 @@ bool SelectOperationExecutor::executeFilterLeftIsColumn() {
 				auto& lhsColumn = *(this->mFilterExecutionEngine.getStorage(instruction->lhs));
 				auto& lhsColumnValues = lhsColumn.template getUnderlyingStorage<Type>();
 
-				std::cout << lhsColumnValues.size() << std::endl;
 				for (std::size_t rowIndex = 0; rowIndex < lhsColumnValues.size(); rowIndex++) {
 					if (QueryExpressionHelpers::compare<Type>(instruction->op, lhsColumnValues[rowIndex], instruction->rhs)) {
 						ExecutorHelpers::addRowToResult(this->mReducedProjections.storage, this->mResult, rowIndex);
-					}
 
-					if (mOrderResult) {
-						addForOrdering(rowIndex);
+						if (mOrderResult) {
+							addForOrdering(rowIndex);
+						}
 					}
 				}
 
@@ -149,10 +149,10 @@ bool SelectOperationExecutor::executeFilterRightIsColumn() {
 				for (std::size_t rowIndex = 0; rowIndex < rhsColumnValues.size(); rowIndex++) {
 					if (QueryExpressionHelpers::compare<Type>(instruction->op, instruction->lhs, rhsColumnValues[rowIndex])) {
 						ExecutorHelpers::addRowToResult(this->mReducedProjections.storage, this->mResult, rowIndex);
-					}
 
-					if (mOrderResult) {
-						addForOrdering(rowIndex);
+						if (mOrderResult) {
+							addForOrdering(rowIndex);
+						}
 					}
 				}
 
@@ -183,7 +183,10 @@ bool SelectOperationExecutor::executeFilterBothColumn() {
 				auto& rhsColumnValues = rhsColumn.getUnderlyingStorage<Type>();
 
 				for (std::size_t rowIndex = 0; rowIndex < lhsColumnValues.size(); rowIndex++) {
-					if (QueryExpressionHelpers::compare<Type>(instruction->op, lhsColumnValues[rowIndex], rhsColumnValues[rowIndex])) {
+					auto lhsValue = lhsColumnValues[rowIndex];
+					auto rhsValue = rhsColumnValues[rowIndex];
+
+					if (QueryExpressionHelpers::compare<Type>(instruction->op, lhsValue, rhsValue)) {
 						ExecutorHelpers::addRowToResult(this->mReducedProjections.storage, this->mResult, rowIndex);
 
 						if (mOrderResult) {
@@ -201,194 +204,13 @@ bool SelectOperationExecutor::executeFilterBothColumn() {
 	return false;
 }
 
-namespace {
-	template<typename T>
-	using TreeIndexIterator = typename TreeIndex::UnderlyingStorage<T>::const_iterator;
-
-	template<typename T>
-	std::pair<TreeIndexIterator<T>, TreeIndexIterator<T>> findTreeIndexIterators(const TreeIndex::UnderlyingStorage<T>& underlyingIndex,
-																				 CompareOperator op,
-																				 const T& indexSearchValue) {
-		auto startIterator = underlyingIndex.end();
-		auto endIterator = underlyingIndex.end();
-
-		switch (op) {
-			case CompareOperator::Equal:
-				startIterator = underlyingIndex.lower_bound(indexSearchValue);
-				endIterator = underlyingIndex.upper_bound(indexSearchValue);
-
-				if (endIterator == underlyingIndex.end()) {
-					startIterator = underlyingIndex.end();
-					endIterator = underlyingIndex.end();
-				}
-				break;
-			case CompareOperator::NotEqual:
-				break;
-			case CompareOperator::LessThan: {
-				startIterator = underlyingIndex.begin();
-				endIterator = underlyingIndex.upper_bound(indexSearchValue);
-
-				if (endIterator != underlyingIndex.end()) {
-					--endIterator;
-				} else {
-					startIterator = underlyingIndex.end();
-					endIterator = underlyingIndex.end();
-				}
-				break;
-			}
-			case CompareOperator::LessThanOrEqual:
-				startIterator = underlyingIndex.begin();
-				endIterator = underlyingIndex.upper_bound(indexSearchValue);
-
-				if (endIterator == underlyingIndex.end()) {
-					startIterator = underlyingIndex.end();
-					endIterator = underlyingIndex.end();
-				}
-				break;
-			case CompareOperator::GreaterThan:
-				startIterator = underlyingIndex.upper_bound(indexSearchValue);
-				endIterator = underlyingIndex.end();
-
-				if (startIterator == underlyingIndex.end()) {
-					startIterator = underlyingIndex.end();
-					endIterator = underlyingIndex.end();
-				}
-				break;
-			case CompareOperator::GreaterThanOrEqual:
-				startIterator = underlyingIndex.upper_bound(indexSearchValue);
-				endIterator = underlyingIndex.end();
-
-				if (startIterator != underlyingIndex.end()) {
-					--startIterator;
-				} else {
-					startIterator = underlyingIndex.end();
-					endIterator = underlyingIndex.end();
-				}
-				break;
-		}
-
-		return std::make_pair(startIterator, endIterator);
-	}
-
-	CompareOperator otherSideCompareOp(CompareOperator op) {
-		switch (op) {
-			case CompareOperator::Equal:
-				return CompareOperator::Equal;
-			case CompareOperator::NotEqual:
-				return CompareOperator::NotEqual;
-			case CompareOperator::LessThan:
-				return CompareOperator::GreaterThan;
-			case CompareOperator::LessThanOrEqual:
-				return CompareOperator::GreaterThanOrEqual;
-			case CompareOperator::GreaterThan:
-				return CompareOperator::LessThan;
-			case CompareOperator::GreaterThanOrEqual:
-				return CompareOperator::LessThanOrEqual;
-		}
-	}
-
-	bool canTreeIndexScan(const TreeIndex& index, const std::string& column, CompareOperator op) {
-		return index.column().name() == column && op != CompareOperator::NotEqual;
-	}
-
-	struct PossibleIndexScan {
-		std::size_t instructionIndex;
-
-		TreeIndex& index;
-
-		std::size_t columnSlot;
-		CompareOperator op;
-		QueryValue indexSearchValue;
-
-		PossibleIndexScan(std::size_t instructionIndex, TreeIndex& index, std::size_t columnSlot, CompareOperator op, QueryValue indexSearchValue)
-			: instructionIndex(instructionIndex),
-			  index(index),
-			  columnSlot(columnSlot),
-			  op(op),
-			  indexSearchValue(indexSearchValue) {
-
-		}
-	};
-
-	std::vector<PossibleIndexScan> findPossibleIndexScans(const Table& table, ExpressionExecutionEngine& executionEngine) {
-		std::vector<PossibleIndexScan> possibleScans;
-
-		for (std::size_t instructionIndex = 0; instructionIndex < executionEngine.instructions().size(); instructionIndex++) {
-			auto instruction = executionEngine.instructions()[instructionIndex].get();
-
-			auto tryAddIndexScan = [&](std::size_t columnSlot, CompareOperator op, QueryValue indexSearchValue) {
-				for (auto& index : table.indices()) {
-					if (canTreeIndexScan(*index, executionEngine.fromSlot(columnSlot), op)) {
-						possibleScans.emplace_back(instructionIndex, *index, columnSlot, op, indexSearchValue);
-					}
-				}
-			};
-
-			auto handleForType = [&](auto dummy) {
-				using Type = decltype(dummy);
-
-				if (auto compareInstruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(instruction)) {
-					tryAddIndexScan(compareInstruction->lhs, compareInstruction->op, QueryValue(compareInstruction->rhs));
-					return true;
-				} else if (auto compareInstruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(instruction)) {
-					tryAddIndexScan(compareInstruction->rhs, otherSideCompareOp(compareInstruction->op), QueryValue(compareInstruction->lhs));
-					return true;
-				}
-
-				return false;
-			};
-
-			anyGenericType(handleForType);
-		}
-
-		return possibleScans;
-	}
-
-	void treeIndexScan(const Table& table,
-					   ExpressionExecutionEngine& filterExecutionEngine,
-					   const PossibleIndexScan& indexScan,
-					   std::vector<ColumnStorage>& workingStorage) {
-		auto handleSearchForType = [&](auto dummy) -> void {
-			using Type = decltype(dummy);
-
-			std::vector<const ColumnStorage*> columnsStorage;
-			for (auto& column : table.schema().columns()) {
-				workingStorage.emplace_back(column);
-				columnsStorage.push_back(&table.getColumn(column.name()));
-			}
-
-			auto& underlyingIndex = indexScan.index.getUnderlyingStorage<Type>();
-			auto iteratorRange = findTreeIndexIterators(
-				underlyingIndex,
-				indexScan.op,
-				indexScan.indexSearchValue.getValue<Type>());
-
-			for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
-				auto rowIndex = it->second;
-
-				for (std::size_t columnIndex = 0; columnIndex < table.schema().columns().size(); columnIndex++) {
-					auto& columnStorage = columnsStorage[columnIndex];
-					auto& resultStorage = workingStorage[columnIndex];
-
-					auto handleForType = [&](auto dummy) {
-						using Type = decltype(dummy);
-						resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
-					};
-
-					handleGenericType(columnStorage->type(), handleForType);
-				}
-			}
-		};
-
-		handleGenericType(indexScan.indexSearchValue.type, handleSearchForType);
-	}
-}
-
 bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
-	auto possibleIndexScans = findPossibleIndexScans(mTable, mFilterExecutionEngine);
+	TreeIndexScanner treeIndexScanner;
+
+	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(mTable, mFilterExecutionEngine);
 	if (!possibleIndexScans.empty()) {
-		auto& indexScan = possibleIndexScans.front();
-		treeIndexScan(mTable, mFilterExecutionEngine, indexScan, mWorkingStorage);
+		auto& indexScan = possibleIndexScans[0];
+		treeIndexScanner.execute(mTable, mFilterExecutionEngine, indexScan, mWorkingStorage);
 
 		mFilterExecutionEngine.replaceInstruction(
 			indexScan.instructionIndex,
@@ -400,6 +222,7 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	ExpressionIROptimizer optimizer(mFilterExecutionEngine);
 	optimizer.optimize();
 
+	// Change storage to the result of the index scan
 	updateAllSlotsStorage(mWorkingStorage);
 
 	mReducedProjections = {};
@@ -418,7 +241,11 @@ bool SelectOperationExecutor::executeDefault() {
 		mFilterExecutionEngine.execute(rowIndex);
 
 		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
-			ExecutorHelpers::addRowToResult(mProjectionExecutionEngines, mReducedProjections.storage, mResult, rowIndex);
+			ExecutorHelpers::addRowToResult(
+				mProjectionExecutionEngines,
+				mReducedProjections.storage,
+				mResult,
+				rowIndex);
 
 			if (mOrderResult) {
 				addForOrdering(rowIndex);
@@ -433,7 +260,8 @@ void SelectOperationExecutor::execute() {
 	if (!mOperation->order.name.empty()) {
 		mOrderResult = true;
 		auto orderRootExpression = std::make_unique<QueryColumnReferenceExpression>(mOperation->order.name);
-		mOrderExecutionEngine = std::make_unique<ExpressionExecutionEngine>(ExecutorHelpers::compile(mTable, orderRootExpression.get()));
+		mOrderExecutionEngine = std::make_unique<ExpressionExecutionEngine>(
+			ExecutorHelpers::compile(mTable, orderRootExpression.get()));
 	}
 
 	mReducedProjections.tryReduce(mOperation->projections, mTable);

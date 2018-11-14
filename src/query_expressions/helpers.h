@@ -54,5 +54,16 @@ namespace QueryExpressionHelpers {
 		}
 	}
 
+	/**
+	 * Returns the value of the given row in the given column
+	 * @param storage The storage of the column
+	 * @param rowIndex The index of the row
+	 */
 	QueryValue getValueForColumn(const ColumnStorage& storage, std::size_t rowIndex);
+
+	/**
+	 * Returns the compare operator if it was on the other side (if on lhs return operator with same effect but on the rhs)
+	 * @param op The operator
+	 */
+	CompareOperator otherSideCompareOp(CompareOperator op);
 }
