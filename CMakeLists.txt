@@ -26,8 +26,8 @@ set(SOURCE_FILES
         src/query.h
         src/query_expressions/compiler.cpp
         src/query_expressions/compiler.h
-        src/query_expressions/execution.cpp
-        src/query_expressions/execution.h
+        src/execution/expression_execution.cpp
+        src/execution/expression_execution.h
         src/query_expressions/expressions.cpp
         src/query_expressions/expressions.h
         src/query_expressions/helpers.cpp

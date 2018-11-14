@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 #include "visitor.h"
-#include "execution.h"
+#include "../execution/expression_execution.h"
 
 /**
  * Represents a compiler for query expressions to expression IR

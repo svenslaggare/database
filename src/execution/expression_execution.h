@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "../common.h"
-#include "helpers.h"
+#include "../query_expressions/helpers.h"
 
 struct ColumnStorage;
 class Table;

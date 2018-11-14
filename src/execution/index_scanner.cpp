@@ -1,6 +1,6 @@
 #include "index_scanner.h"
 #include "../indices.h"
-#include "../query_expressions/execution.h"
+#include "expression_execution.h"
 
 PossibleIndexScan::PossibleIndexScan(std::size_t instructionIndex,
 									 TreeIndex& index,
