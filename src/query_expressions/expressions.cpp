@@ -47,18 +47,13 @@ void QueryAndExpression::accept(QueryExpressionVisitor& visitor, QueryExpression
 }
 
 void QueryAndExpression::update(QueryExpression* oldExpression,	std::unique_ptr<QueryExpression> newExpression) {
-	auto newExpressionBool = dynamic_cast<QueryBoolExpression*>(newExpression.get());
-	if (newExpressionBool == nullptr) {
-		throw std::runtime_error("Not bool expression.");
-	}
-
 	if (oldExpression == lhs.get()) {
-		lhs = std::unique_ptr<QueryBoolExpression>((QueryBoolExpression*)newExpression.release());
+		lhs = std::move(newExpression);
 		return;
 	}
 
 	if (oldExpression == rhs.get()) {
-		rhs = std::unique_ptr<QueryBoolExpression>((QueryBoolExpression*)newExpression.release());
+		rhs = std::move(newExpression);
 		return;
 	}
 

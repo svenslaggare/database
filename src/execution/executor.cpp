@@ -24,7 +24,9 @@ void OperationExecutorVisitor::visit(QuerySelectOperation* operation) {
 
 	std::vector<std::unique_ptr<ExpressionExecutionEngine>> projectionExecutionEngines;
 	for (auto& projection : operation->projections) {
-		projectionExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>(ExecutorHelpers::compile(virtualTable, projection.get())));
+		projectionExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>(
+			ExecutorHelpers::compile(virtualTable, projection.get())));
+
 		result.columns.emplace_back(projectionExecutionEngines.back()->expressionType());
 	}
 

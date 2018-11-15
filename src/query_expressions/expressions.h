@@ -74,16 +74,9 @@ struct QueryValueExpression : public QueryExpression {
 };
 
 /**
- * Represents a bool value query expression
- */
-struct QueryBoolExpression : public QueryExpression {
-
-};
-
-/**
  * Represents and query expression
  */
-struct QueryAndExpression : public QueryBoolExpression {
+struct QueryAndExpression : public QueryExpression {
 	std::unique_ptr<QueryExpression> lhs;
 	std::unique_ptr<QueryExpression> rhs;
 
@@ -101,7 +94,7 @@ struct QueryAndExpression : public QueryBoolExpression {
 /**
  * Represents a query compare expression
  */
-struct QueryCompareExpression : public QueryBoolExpression {
+struct QueryCompareExpression : public QueryExpression {
 	std::unique_ptr<QueryExpression> lhs;
 	std::unique_ptr<QueryExpression> rhs;
 	CompareOperator op;
