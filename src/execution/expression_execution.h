@@ -5,9 +5,9 @@
 
 #include "../common.h"
 #include "../query_expressions/helpers.h"
+#include "virtual_table.h"
 
-struct ColumnStorage;
-class Table;
+class ColumnStorage;
 struct ExpressionIR;
 
 /**
@@ -17,7 +17,7 @@ class ExpressionExecutionEngine {
 public:
 	using EvaluationStack = std::stack<QueryValue, std::vector<QueryValue>>;
 private:
-	std::vector<ColumnStorage*> mSlottedColumnStorage;
+	std::vector<VirtualColumn*> mSlottedColumnStorage;
 	std::unordered_map<std::string, std::size_t> mColumnNameToSlot;
 	std::size_t mNextColumnSlot = 0;
 
@@ -36,7 +36,7 @@ public:
 	 * Returns the storage for the given column
 	 * @param slot The slot of the column
 	 */
-	inline ColumnStorage* getStorage(std::size_t slot) {
+	inline VirtualColumn* columnFromSlot(std::size_t slot) {
 		return mSlottedColumnStorage[slot];
 	}
 
@@ -61,13 +61,7 @@ public:
 	 * Fills the slots
 	 * @param table The table
 	 */
-	void fillSlots(Table& table);
-
-	/**
-	 * Sets the slot storage
-	 * @param storage The storage
-	 */
-	void setSlotStorage(std::vector<ColumnStorage*> storage);
+	void fillSlots(VirtualTable& table);
 
 	/**
 	 * Returns the type of the final expression
@@ -245,7 +239,7 @@ struct CompareExpressionLeftValueKnownTypeRightColumnIR : public ExpressionIR {
 	}
 
 	virtual void execute(ExpressionExecutionEngine& executionEngine) override {
-		T rhsValue = executionEngine.getStorage(rhs)->template getUnderlyingStorage<T>()[executionEngine.currentRowIndex()];
+		T rhsValue = executionEngine.columnFromSlot(rhs)->storage()->template getUnderlyingStorage<T>()[executionEngine.currentRowIndex()];
 		executionEngine.pushEvaluation(QueryValue(QueryExpressionHelpers::compare(op, lhs, rhsValue)));
 	}
 };
@@ -271,7 +265,8 @@ struct CompareExpressionLeftColumnRightValueKnownTypeIR : public ExpressionIR {
 	}
 
 	virtual void execute(ExpressionExecutionEngine& executionEngine) override {
-		T lhsValue = executionEngine.getStorage(lhs)->template getUnderlyingStorage<T>()[executionEngine.currentRowIndex()];
+		auto lhsColumn = executionEngine.columnFromSlot(lhs)->storage();
+		T lhsValue = lhsColumn->template getUnderlyingStorage<T>()[executionEngine.currentRowIndex()];
 		executionEngine.pushEvaluation(QueryValue(QueryExpressionHelpers::compare(op, lhsValue, rhs)));
 	}
 };

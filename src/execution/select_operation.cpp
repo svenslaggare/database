@@ -3,11 +3,12 @@
 #include "../helpers.h"
 #include "../query_expressions/ir_optimizer.h"
 #include "index_scanner.h"
+#include "virtual_table.h"
 
 #include <iostream>
 #include <algorithm>
 
-SelectOperationExecutor::SelectOperationExecutor(Table& table,
+SelectOperationExecutor::SelectOperationExecutor(VirtualTable& table,
 												 QuerySelectOperation* operation,
 												 std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projectionExecutionEngines,
 												 ExpressionExecutionEngine& filterExecutionEngine,
@@ -19,8 +20,6 @@ SelectOperationExecutor::SelectOperationExecutor(Table& table,
 	  mFilterExecutionEngine(filterExecutionEngine),
 	  mResult(result),
 	  mOptimize(optimize) {
-	mNumRows = mTable.numRows();
-
 	if (optimize) {
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeNoFilter, this));
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterLeftIsColumn, this));
@@ -40,27 +39,6 @@ void SelectOperationExecutor::addForOrdering(std::size_t rowIndex) {
 	mOrderingData.push_back(mOrderExecutionEngine->popEvaluation().data);
 }
 
-void SelectOperationExecutor::updateSlotsStorage(std::vector<ColumnStorage>& newStorage, ExpressionExecutionEngine& executionEngine) {
-	std::vector<ColumnStorage*> workingSlots;
-	for (std::size_t slot = 0; slot < executionEngine.numSlots(); slot++) {
-		auto column = executionEngine.fromSlot(slot);
-		workingSlots.push_back(&newStorage.at(mTable.schema().getDefinition(column).index()));
-	}
-
-	executionEngine.setSlotStorage(std::move(workingSlots));
-}
-
-void SelectOperationExecutor::updateAllSlotsStorage(std::vector<ColumnStorage>& newStorage) {
-	updateSlotsStorage(newStorage, mFilterExecutionEngine);
-	for (auto& projection : mProjectionExecutionEngines) {
-		updateSlotsStorage(newStorage, *projection);
-	}
-
-	if (mOrderExecutionEngine) {
-		updateSlotsStorage(newStorage, *mOrderExecutionEngine);
-	}
-}
-
 bool SelectOperationExecutor::executeNoFilter() {
 	if (hasReducedToOneInstruction() && mReducedProjections.allReduced) {
 		auto firstInstruction = this->mFilterExecutionEngine.instructions().front().get();
@@ -71,12 +49,14 @@ bool SelectOperationExecutor::executeNoFilter() {
 				if (reducedIndex != -1 || !mOrderResult) {
 					std::size_t columnIndex = 0;
 					for (auto& column : this->mReducedProjections.columns) {
-						auto& columnDefinition = this->mTable.schema().getDefinition(column);
+						auto& columnDefinition = this->mTable.underlying().schema().getDefinition(column);
 						auto& resultStorage = this->mResult.columns[columnIndex];
 
 						auto handleForType = [&](auto dummy) {
 							using Type = decltype(dummy);
-							resultStorage.getUnderlyingStorage<Type>() = this->mReducedProjections.getStorage(column)->getUnderlyingStorage<Type>();
+							resultStorage.getUnderlyingStorage<Type>() = this->mReducedProjections.getStorage(column)
+								->storage()
+								->getUnderlyingStorage<Type>();
 
 							if (mOrderResult) {
 								if ((std::size_t)reducedIndex == columnIndex) {
@@ -91,7 +71,7 @@ bool SelectOperationExecutor::executeNoFilter() {
 						columnIndex++;
 					}
 				} else {
-					for (std::size_t rowIndex = 0; rowIndex < mNumRows; rowIndex++) {
+					for (std::size_t rowIndex = 0; rowIndex < mTable.numRows(); rowIndex++) {
 						ExecutorHelpers::addRowToResult(this->mReducedProjections.storage, this->mResult, rowIndex);
 						addForOrdering(rowIndex);
 					}
@@ -112,7 +92,7 @@ bool SelectOperationExecutor::executeFilterLeftIsColumn() {
 		return anyGenericType([&](auto dummy) {
 			using Type = decltype(dummy);
 			if (auto instruction = dynamic_cast<CompareExpressionLeftColumnRightValueKnownTypeIR<Type>*>(firstInstruction)) {
-				auto& lhsColumn = *(this->mFilterExecutionEngine.getStorage(instruction->lhs));
+				auto& lhsColumn = *(this->mFilterExecutionEngine.columnFromSlot(instruction->lhs)->storage());
 				auto& lhsColumnValues = lhsColumn.template getUnderlyingStorage<Type>();
 
 				for (std::size_t rowIndex = 0; rowIndex < lhsColumnValues.size(); rowIndex++) {
@@ -143,7 +123,7 @@ bool SelectOperationExecutor::executeFilterRightIsColumn() {
 		auto handleForType = [&](auto dummy) {
 			using Type = decltype(dummy);
 			if (auto instruction = dynamic_cast<CompareExpressionLeftValueKnownTypeRightColumnIR<Type>*>(firstInstruction)) {
-				auto& rhsColumn = *(this->mFilterExecutionEngine.getStorage(instruction->rhs));
+				auto& rhsColumn = *(this->mFilterExecutionEngine.columnFromSlot(instruction->rhs)->storage());
 				auto& rhsColumnValues = rhsColumn.template getUnderlyingStorage<Type>();
 
 				for (std::size_t rowIndex = 0; rowIndex < rhsColumnValues.size(); rowIndex++) {
@@ -174,8 +154,8 @@ bool SelectOperationExecutor::executeFilterBothColumn() {
 		auto firstInstruction = this->mFilterExecutionEngine.instructions().front().get();
 
 		if (auto instruction = dynamic_cast<CompareExpressionLeftColumnRightColumnIR*>(firstInstruction)) {
-			auto& lhsColumn = *this->mFilterExecutionEngine.getStorage(instruction->lhs);
-			auto& rhsColumn = *this->mFilterExecutionEngine.getStorage(instruction->rhs);
+			auto& lhsColumn = *this->mFilterExecutionEngine.columnFromSlot(instruction->lhs)->storage();
+			auto& rhsColumn = *this->mFilterExecutionEngine.columnFromSlot(instruction->rhs)->storage();
 
 			auto handleForType = [&](auto dummy) {
 				using Type = decltype(dummy);
@@ -224,27 +204,18 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	optimizer.optimize();
 
 	// Change storage to the result of the index scan
-	updateAllSlotsStorage(mWorkingStorage);
-
-	mReducedProjections = {};
-	mReducedProjections.tryReduce(
-		mOperation->projections,
-		[&](const std::string& column) {
-			return &mWorkingStorage[mTable.schema().getDefinition(column).index()];
-		});
-
-	mNumRows = mWorkingStorage[0].size();
+	mTable.setStorage(mWorkingStorage);
 	return true;
 }
 
 bool SelectOperationExecutor::executeDefault() {
-	for (std::size_t rowIndex = 0; rowIndex < mNumRows; rowIndex++) {
+	for (std::size_t rowIndex = 0; rowIndex < mTable.numRows(); rowIndex++) {
 		mFilterExecutionEngine.execute(rowIndex);
 
 		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
 			ExecutorHelpers::addRowToResult(
 				mProjectionExecutionEngines,
-				mReducedProjections.storage,
+				mReducedProjections,
 				mResult,
 				rowIndex);
 

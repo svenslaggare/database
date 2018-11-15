@@ -13,7 +13,7 @@ PossibleIndexScan::PossibleIndexScan(std::size_t instructionIndex,
 
 }
 
-IndexScanContext::IndexScanContext(const Table& table, ExpressionExecutionEngine& executionEngine)
+IndexScanContext::IndexScanContext(VirtualTable& table, ExpressionExecutionEngine& executionEngine)
 	: table(table), executionEngine(executionEngine) {
 
 }
@@ -102,7 +102,7 @@ std::vector<PossibleIndexScan> TreeIndexScanner::findPossibleIndexScans(IndexSca
 		auto instruction = context.executionEngine.instructions()[instructionIndex].get();
 
 		auto tryAddIndexScan = [&](std::size_t columnSlot, CompareOperator op, QueryValue indexSearchValue) {
-			for (auto& index : context.table.indices()) {
+			for (auto& index : context.table.underlying().indices()) {
 				if (canTreeIndexScan(*index, context.executionEngine.fromSlot(columnSlot), op)) {
 					possibleScans.emplace_back(instructionIndex, *index, op, indexSearchValue);
 				}
@@ -144,9 +144,9 @@ void TreeIndexScanner::execute(IndexScanContext& context,
 		using Type = decltype(dummy);
 
 		std::vector<const ColumnStorage*> columnsStorage;
-		for (auto& column : context.table.schema().columns()) {
+		for (auto& column : context.table.underlying().schema().columns()) {
 			resultsStorage.emplace_back(column);
-			columnsStorage.push_back(&context.table.getColumn(column.name()));
+			columnsStorage.push_back(context.table.getColumn(column.name()).storage());
 		}
 
 		auto& underlyingIndex = indexScan.index.getUnderlyingStorage<Type>();

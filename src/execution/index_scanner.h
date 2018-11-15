@@ -5,6 +5,7 @@
 
 class TreeIndex;
 class Table;
+class VirtualTable;
 class ExpressionExecutionEngine;
 
 /**
@@ -32,10 +33,10 @@ struct PossibleIndexScan {
 };
 
 /**
- * Repesents the context for an index scan
+ * Represents the context for an index scan
  */
 struct IndexScanContext {
-	const Table& table;
+	VirtualTable& table;
 	ExpressionExecutionEngine& executionEngine;
 
 	/**
@@ -43,7 +44,7 @@ struct IndexScanContext {
 	 * @param table The table
 	 * @param executionEngine The execution engine
 	 */
-	IndexScanContext(const Table& table, ExpressionExecutionEngine& executionEngine);
+	IndexScanContext(VirtualTable& table, ExpressionExecutionEngine& executionEngine);
 };
 
 /**

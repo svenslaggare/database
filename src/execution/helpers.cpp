@@ -9,8 +9,8 @@
 #include <algorithm>
 
 namespace {
-	inline void addColumnToResult(std::vector<ColumnStorage*> columnsStorage, QueryResult& result, std::size_t rowIndex, std::size_t columnIndex) {
-		auto& columnStorage = *columnsStorage[columnIndex];
+	inline void addColumnToResult(std::vector<VirtualColumn*> columnsStorage, QueryResult& result, std::size_t rowIndex, std::size_t columnIndex) {
+		auto& columnStorage = *columnsStorage[columnIndex]->storage();
 		auto& resultStorage = result.columns[columnIndex];
 
 		auto handleForType = [&](auto dummy) {
@@ -22,26 +22,26 @@ namespace {
 	}
 }
 
-ExpressionExecutionEngine ExecutorHelpers::compile(Table& table, QueryExpression* rootExpression) {
+ExpressionExecutionEngine ExecutorHelpers::compile(VirtualTable& table, QueryExpression* rootExpression) {
 	ExpressionExecutionEngine executionEngine;
 	QueryExpressionCompilerVisitor expressionCompilerVisitor(table, executionEngine);
 	expressionCompilerVisitor.compile(rootExpression);
 	return executionEngine;
 }
 
-void ExecutorHelpers::addRowToResult(std::vector<ColumnStorage*> columnsStorage, QueryResult& result, std::size_t rowIndex) {
+void ExecutorHelpers::addRowToResult(std::vector<VirtualColumn*> columnsStorage, QueryResult& result, std::size_t rowIndex) {
 	for (std::size_t columnIndex = 0; columnIndex < columnsStorage.size(); columnIndex++) {
 		addColumnToResult(columnsStorage, result, rowIndex, columnIndex);
 	}
 }
 
 void ExecutorHelpers::addRowToResult(std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projections,
-									 std::vector<ColumnStorage*>& reducedProjections,
+									 ReducedProjections& reducedProjections,
 									 QueryResult& result,
 									 std::size_t rowIndex) {
 	std::size_t projectionIndex = 0;
 	for (auto& projection : projections) {
-		if (reducedProjections[projectionIndex] == nullptr) {
+		if (reducedProjections.storage[projectionIndex] == nullptr) {
 			projection->execute(rowIndex);
 
 			auto resultValue = projection->popEvaluation();
@@ -54,7 +54,7 @@ void ExecutorHelpers::addRowToResult(std::vector<std::unique_ptr<ExpressionExecu
 
 			handleGenericType(resultValue.type, handleForType);
 		} else {
-			addColumnToResult(reducedProjections, result, rowIndex, projectionIndex);
+			addColumnToResult(reducedProjections.storage, result, rowIndex, projectionIndex);
 		}
 
 		projectionIndex++;
@@ -116,7 +116,7 @@ void ExecutorHelpers::orderResult(ColumnType orderDataType, const std::vector<Ra
 }
 
 void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections,
-								   std::function<ColumnStorage* (const std::string&)> getColumnStorage) {
+								   std::function<VirtualColumn* (const std::string&)> getColumnStorage) {
 	allReduced = true;
 
 	for (auto& projection : projections) {
@@ -138,7 +138,7 @@ void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>
 	}
 }
 
-void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, Table& table) {
+void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, VirtualTable& table) {
 	tryReduce(projections, [&](const std::string& column) { return &table.getColumn(column); });
 }
 
@@ -155,7 +155,7 @@ std::int64_t ReducedProjections::indexOfColumn(const std::string& name) const {
 	return -1;
 }
 
-ColumnStorage* ReducedProjections::getStorage(const std::string& name) const {
+VirtualColumn* ReducedProjections::getStorage(const std::string& name) const {
 	return storage[indexOfColumn(name)];
 }
 

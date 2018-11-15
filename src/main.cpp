@@ -125,7 +125,7 @@ int main() {
 //			std::make_unique<QueryValueExpression>(QueryValue(350000.0f)),
 //			CompareOperator::LessThan)
 //		,std::make_unique<QueryColumnReferenceExpression>("x")
-		,OrderingClause("y", false)
+//		,OrderingClause("y", false)
 	));
 	Schema schema(
 		"test_table",

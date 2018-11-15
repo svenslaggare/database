@@ -1,6 +1,7 @@
 #include "expression_execution.h"
 #include "../query_expressions/compiler.h"
 #include "../table.h"
+#include "virtual_table.h"
 
 ExpressionExecutionEngine::ExpressionExecutionEngine()
 	: mExpressionType(ColumnType::Int32) {
@@ -53,15 +54,11 @@ std::string ExpressionExecutionEngine::fromSlot(std::size_t slot) const {
 	return "";
 }
 
-void ExpressionExecutionEngine::fillSlots(Table& table) {
+void ExpressionExecutionEngine::fillSlots(VirtualTable& table) {
 	mSlottedColumnStorage.resize(mColumnNameToSlot.size());
 	for (auto& column : mColumnNameToSlot) {
 		mSlottedColumnStorage[column.second] = &table.getColumn(column.first);
 	}
-}
-
-void ExpressionExecutionEngine::setSlotStorage(std::vector<ColumnStorage*> storage) {
-	mSlottedColumnStorage = std::move(storage);
 }
 
 ColumnType ExpressionExecutionEngine::expressionType() const {
@@ -97,7 +94,7 @@ ColumnReferenceExpressionIR::ColumnReferenceExpressionIR(std::size_t columnSlot)
 
 void ColumnReferenceExpressionIR::execute(ExpressionExecutionEngine& executionEngine) {
 	executionEngine.pushEvaluation(QueryExpressionHelpers::getValueForColumn(
-		*executionEngine.getStorage(columnSlot),
+		*executionEngine.columnFromSlot(columnSlot)->storage(),
 		executionEngine.currentRowIndex()));
 }
 
@@ -154,12 +151,14 @@ CompareExpressionLeftColumnRightColumnIR::CompareExpressionLeftColumnRightColumn
 }
 
 void CompareExpressionLeftColumnRightColumnIR::execute(ExpressionExecutionEngine& executionEngine) {
-	auto lhsColumn = executionEngine.getStorage(lhs);
+	auto lhsColumn = executionEngine.columnFromSlot(lhs)->storage();
 
 	auto handleForType = [&](auto dummy) {
 		using Type = decltype(dummy);
+		auto rhsColumn = executionEngine.columnFromSlot(rhs)->storage();
+
 		Type lhsValue = lhsColumn->getUnderlyingStorage<Type>()[executionEngine.currentRowIndex()];
-		Type rhsValue = executionEngine.getStorage(rhs)->getUnderlyingStorage<Type>()[executionEngine.currentRowIndex()];
+		Type rhsValue = rhsColumn->getUnderlyingStorage<Type>()[executionEngine.currentRowIndex()];
 		executionEngine.pushEvaluation(QueryValue(QueryExpressionHelpers::compare(op, lhsValue, rhsValue)));
 	};
 

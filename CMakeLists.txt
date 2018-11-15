@@ -37,6 +37,14 @@ set(SOURCE_FILES
         src/storage.cpp
         src/storage.h
         src/table.cpp
-        src/table.h src/indices.cpp src/indices.h src/query_expressions/ir_optimizer.cpp src/query_expressions/ir_optimizer.h src/execution/index_scanner.cpp src/execution/index_scanner.h)
+        src/table.h
+        src/indices.cpp
+        src/indices.h
+        src/query_expressions/ir_optimizer.cpp
+        src/query_expressions/ir_optimizer.h
+        src/execution/index_scanner.cpp
+        src/execution/index_scanner.h
+        src/execution/virtual_table.cpp
+        src/execution/virtual_table.h)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)

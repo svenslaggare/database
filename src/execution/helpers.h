@@ -8,7 +8,10 @@ struct ColumnStorage;
 struct QueryResult;
 struct ExpressionExecutionEngine;
 struct QueryExpression;
-struct Table;
+class Table;
+class VirtualTable;
+class VirtualColumn;
+struct ReducedProjections;
 
 namespace ExecutorHelpers {
 	/**
@@ -16,7 +19,7 @@ namespace ExecutorHelpers {
 	 * @param table The table
 	 * @param rootExpression The root expression
 	 */
-	ExpressionExecutionEngine compile(Table& table, QueryExpression* rootExpression);
+	ExpressionExecutionEngine compile(VirtualTable& table, QueryExpression* rootExpression);
 
 	/**
 	 * Adds given row to the result
@@ -24,7 +27,7 @@ namespace ExecutorHelpers {
 	 * @param result The result
 	 * @param rowIndex The index of the row
 	 */
-	void addRowToResult(std::vector<ColumnStorage*> columnsStorage, QueryResult& result, std::size_t rowIndex);
+	void addRowToResult(std::vector<VirtualColumn*> columnsStorage, QueryResult& result, std::size_t rowIndex);
 
 	/**
 	 * Adds the given row to the result
@@ -34,7 +37,7 @@ namespace ExecutorHelpers {
 	 * @param rowIndex The index of the row
 	 */
 	void addRowToResult(std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projections,
-						std::vector<ColumnStorage*>& reducedProjections,
+						ReducedProjections& reducedProjections,
 						QueryResult& result,
 						std::size_t rowIndex);
 
@@ -56,7 +59,7 @@ namespace ExecutorHelpers {
  */
 struct ReducedProjections {
 	std::vector<std::string> columns;
-	std::vector<ColumnStorage*> storage;
+	std::vector<VirtualColumn*> storage;
 	bool allReduced = false;
 
 	/**
@@ -65,14 +68,14 @@ struct ReducedProjections {
 	 * @param getColumnStorage Function for getting the storage of a column
 	 */
 	void tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections,
-				   std::function<ColumnStorage* (const std::string&)> getColumnStorage);
+				   std::function<VirtualColumn* (const std::string&)> getColumnStorage);
 
 	/**
 	 * Tries to reduce the given projections
 	 * @param projections The projection
 	 * @param table The table
 	 */
-	void tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, Table& table);
+	void tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, VirtualTable& table);
 
 	/**
 	 * Returns the index of the reduced column
@@ -84,7 +87,7 @@ struct ReducedProjections {
 	 * Returns the storage of the given column
 	 * @param name The name of the column
 	 */
-	ColumnStorage* getStorage(const std::string& name) const;
+	VirtualColumn* getStorage(const std::string& name) const;
 
 	/**
 	 * Clears all reduced projections

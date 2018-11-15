@@ -20,17 +20,17 @@ void OperationExecutorVisitor::visit(QuerySelectOperation* operation) {
 		rootExpression = std::make_unique<QueryValueExpression>(QueryValue(true));
 	}
 
-	auto& table = databaseEngine.getTable(operation->table);
+	VirtualTable virtualTable(databaseEngine.getTable(operation->table));
 
 	std::vector<std::unique_ptr<ExpressionExecutionEngine>> projectionExecutionEngines;
 	for (auto& projection : operation->projections) {
-		projectionExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>(ExecutorHelpers::compile(table, projection.get())));
+		projectionExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>(ExecutorHelpers::compile(virtualTable, projection.get())));
 		result.columns.emplace_back(projectionExecutionEngines.back()->expressionType());
 	}
 
-	auto filterExecutionEngine = ExecutorHelpers::compile(table, rootExpression.get());
+	auto filterExecutionEngine = ExecutorHelpers::compile(virtualTable, rootExpression.get());
 	SelectOperationExecutor executor(
-		table,
+		virtualTable,
 		operation,
 		projectionExecutionEngines,
 		filterExecutionEngine,

@@ -6,60 +6,6 @@
 class ColumnDefinition;
 
 /**
- * Represents a hashed index
- */
-class HashedIndex {
-private:
-	const ColumnDefinition& mColumn;
-	std::unique_ptr<std::uint8_t[]> mUnderlyingStorage;
-public:
-	template<typename T>
-	using UnderlyingStorage = std::unordered_map<T, std::size_t>;
-
-	/**
-	 * Creates a new hashed index
-	 * @param column The column to index on
-	 */
-	explicit HashedIndex(const ColumnDefinition& column);
-
-	/**
-	 * Returns the column that is hashed on
-	 */
-	const ColumnDefinition& column() const;
-
-	/**
-	 * Finds the row index for the given value
-	 * @tparam T The type of the value
-	 * @param value The value
-	 * @param rowIndex Sets to found row index
-	 * @return True if found else false
-	 */
-	template<typename T>
-	bool findRowIndex(const T& value, std::size_t& rowIndex) const {
-		auto underlyingIndex = ((UnderlyingStorage<T>*)mUnderlyingStorage.get());
-		auto rowIndexIterator = underlyingIndex->find(value);
-		if (rowIndexIterator != underlyingIndex->end()) {
-			rowIndex = rowIndexIterator->second;
-			return true;
-		}
-
-		return false;
-	}
-
-	/**
-	 * Inserts an index entry for the given value
-	 * @tparam T The type of the value
-	 * @param value The value
-	 * @param rowIndex The row index of the value
-	 */
-	template<typename T>
-	void insert(const T& value, std::size_t rowIndex) {
-		auto underlyingIndex = ((UnderlyingStorage<T>*)mUnderlyingStorage.get());
-		underlyingIndex->emplace(value, rowIndex);
-	}
-};
-
-/**
  * Represents a Tree index
  */
 class TreeIndex {

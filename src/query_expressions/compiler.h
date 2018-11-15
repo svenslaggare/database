@@ -10,7 +10,7 @@
  */
 class QueryExpressionCompilerVisitor : public QueryExpressionVisitor {
 private:
-	Table& mTable;
+	VirtualTable& mTable;
 	ExpressionExecutionEngine& mExecutionEngine;
 	std::stack<ColumnType> mTypeEvaluationStack;
 	bool mOptimize;
@@ -21,7 +21,7 @@ public:
 	 * @param executionEngine The execution engine
 	 * @param optimize Indicates if optimizations are enabled
 	 */
-	explicit QueryExpressionCompilerVisitor(Table& table, ExpressionExecutionEngine& executionEngine, bool optimize = true);
+	explicit QueryExpressionCompilerVisitor(VirtualTable& table, ExpressionExecutionEngine& executionEngine, bool optimize = true);
 
 	/**
 	 * Compiles the given expression

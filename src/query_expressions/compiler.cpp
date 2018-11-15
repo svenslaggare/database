@@ -2,7 +2,7 @@
 #include "helpers.h"
 #include "ir_optimizer.h"
 
-QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(Table& table, ExpressionExecutionEngine& executionEngine, bool optimize)
+QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(VirtualTable& table, ExpressionExecutionEngine& executionEngine, bool optimize)
 	: mTable(table), mExecutionEngine(executionEngine), mOptimize(optimize) {
 
 }

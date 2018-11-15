@@ -3,7 +3,6 @@
 #include <memory>
 #include "helpers.h"
 
-struct Table;
 struct ExpressionExecutionEngine;
 struct QuerySelectOperation;
 struct QueryResult;
@@ -13,7 +12,7 @@ struct QueryResult;
  */
 class SelectOperationExecutor {
 private:
-	Table& mTable;
+	VirtualTable& mTable;
 	QuerySelectOperation* mOperation;
 	std::vector<std::unique_ptr<ExpressionExecutionEngine>>& mProjectionExecutionEngines;
 	ExpressionExecutionEngine& mFilterExecutionEngine;
@@ -24,7 +23,6 @@ private:
 	std::unique_ptr<ExpressionExecutionEngine> mOrderExecutionEngine;
 	std::vector<RawQueryValue> mOrderingData;
 
-	std::size_t mNumRows;
 	std::vector<ColumnStorage> mWorkingStorage;
 	ReducedProjections mReducedProjections;
 
@@ -33,11 +31,6 @@ private:
 	bool hasReducedToOneInstruction() const;
 
 	void addForOrdering(std::size_t rowIndex);
-
-	void updateSlotsStorage(std::vector<ColumnStorage>& newStorage,
-							ExpressionExecutionEngine& executionEngine);
-
-	void updateAllSlotsStorage(std::vector<ColumnStorage>& newStorage);
 
 	bool executeNoFilter();
 
@@ -57,7 +50,7 @@ public:
 	 * @param result The result
 	 * @param optimize Indicates if to optimize the execution
 	 */
-	SelectOperationExecutor(Table& table,
+	SelectOperationExecutor(VirtualTable& table,
 							QuerySelectOperation* operation,
 							std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projectionExecutionEngines,
 							ExpressionExecutionEngine& filterExecutionEngine,
