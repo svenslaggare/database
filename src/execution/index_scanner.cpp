@@ -13,6 +13,11 @@ PossibleIndexScan::PossibleIndexScan(std::size_t instructionIndex,
 
 }
 
+IndexScanContext::IndexScanContext(const Table& table, ExpressionExecutionEngine& executionEngine)
+	: table(table), executionEngine(executionEngine) {
+
+}
+
 namespace {
 	template<typename T>
 	using TreeIndexIterator = typename TreeIndex::UnderlyingStorage<T>::const_iterator;
@@ -90,15 +95,15 @@ namespace {
 	}
 }
 
-std::vector<PossibleIndexScan> TreeIndexScanner::findPossibleIndexScans(const Table& table, ExpressionExecutionEngine& executionEngine) {
+std::vector<PossibleIndexScan> TreeIndexScanner::findPossibleIndexScans(IndexScanContext& context) {
 	std::vector<PossibleIndexScan> possibleScans;
 
-	for (std::size_t instructionIndex = 0; instructionIndex < executionEngine.instructions().size(); instructionIndex++) {
-		auto instruction = executionEngine.instructions()[instructionIndex].get();
+	for (std::size_t instructionIndex = 0; instructionIndex < context.executionEngine.instructions().size(); instructionIndex++) {
+		auto instruction = context.executionEngine.instructions()[instructionIndex].get();
 
 		auto tryAddIndexScan = [&](std::size_t columnSlot, CompareOperator op, QueryValue indexSearchValue) {
-			for (auto& index : table.indices()) {
-				if (canTreeIndexScan(*index, executionEngine.fromSlot(columnSlot), op)) {
+			for (auto& index : context.table.indices()) {
+				if (canTreeIndexScan(*index, context.executionEngine.fromSlot(columnSlot), op)) {
 					possibleScans.emplace_back(instructionIndex, *index, op, indexSearchValue);
 				}
 			}
@@ -132,17 +137,16 @@ std::vector<PossibleIndexScan> TreeIndexScanner::findPossibleIndexScans(const Ta
 	return possibleScans;
 }
 
-void TreeIndexScanner::execute(const Table& table,
-							   ExpressionExecutionEngine& executionEngine,
+void TreeIndexScanner::execute(IndexScanContext& context,
 							   const PossibleIndexScan& indexScan,
 							   std::vector<ColumnStorage>& resultsStorage) {
 	auto handleSearchForType = [&](auto dummy) -> void {
 		using Type = decltype(dummy);
 
 		std::vector<const ColumnStorage*> columnsStorage;
-		for (auto& column : table.schema().columns()) {
+		for (auto& column : context.table.schema().columns()) {
 			resultsStorage.emplace_back(column);
-			columnsStorage.push_back(&table.getColumn(column.name()));
+			columnsStorage.push_back(&context.table.getColumn(column.name()));
 		}
 
 		auto& underlyingIndex = indexScan.index.getUnderlyingStorage<Type>();

@@ -32,27 +32,38 @@ struct PossibleIndexScan {
 };
 
 /**
+ * Repesents the context for an index scan
+ */
+struct IndexScanContext {
+	const Table& table;
+	ExpressionExecutionEngine& executionEngine;
+
+	/**
+	 * Creates a new context
+	 * @param table The table
+	 * @param executionEngine The execution engine
+	 */
+	IndexScanContext(const Table& table, ExpressionExecutionEngine& executionEngine);
+};
+
+/**
  * Represents a tree index scanner
  */
 class TreeIndexScanner {
 public:
 	/**
 	 * Finds the possible index scans
-	 * @param table The table
-	 * @param executionEngine The execution engine
-	 * @return
+	 * @param context The scan context
 	 */
-	std::vector<PossibleIndexScan> findPossibleIndexScans(const Table& table, ExpressionExecutionEngine& executionEngine);
+	std::vector<PossibleIndexScan> findPossibleIndexScans(IndexScanContext& context);
 
 	/**
 	 * Executes the given index scan
-	 * @param table The table
-	 * @param executionEngine The execution engine
+	 * @param context The scan context
 	 * @param indexScan The scan to execute
 	 * @param resultsStorage The results storage
 	 */
-	void execute(const Table& table,
-				 ExpressionExecutionEngine& executionEngine,
+	void execute(IndexScanContext& context,
 				 const PossibleIndexScan& indexScan,
 				 std::vector<ColumnStorage>& resultsStorage);
 };

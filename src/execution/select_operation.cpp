@@ -206,11 +206,12 @@ bool SelectOperationExecutor::executeFilterBothColumn() {
 
 bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	TreeIndexScanner treeIndexScanner;
+	IndexScanContext context(mTable, mFilterExecutionEngine);
 
-	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(mTable, mFilterExecutionEngine);
+	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(context);
 	if (!possibleIndexScans.empty()) {
 		auto& indexScan = possibleIndexScans[0];
-		treeIndexScanner.execute(mTable, mFilterExecutionEngine, indexScan, mWorkingStorage);
+		treeIndexScanner.execute(context, indexScan, mWorkingStorage);
 
 		mFilterExecutionEngine.replaceInstruction(
 			indexScan.instructionIndex,
