@@ -150,6 +150,23 @@ public:
 	}
 
 	/**
+	 * Updates the indices for the given value
+	 * @tparam T The type of the value
+	 * @param name The name of column
+	 * @param oldValue The old value
+	 * @param newValue The new value
+	 * @param rowIndex The row index for the value
+	 */
+	template<typename T>
+	void updateIndices(const std::string& name, const T& oldValue, const T& newValue, std::size_t rowIndex) {
+		for (auto& index : mIndices) {
+			if (index->column().name() == name) {
+				index->update(oldValue, newValue, rowIndex);
+			}
+		}
+	}
+
+	/**
 	 * Returns the underlying storage for the given column
 	 * @tparam T The type of the column values
 	 * @param name The name of the column

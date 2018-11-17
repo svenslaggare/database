@@ -1,4 +1,5 @@
 #include <functional>
+#include <iostream>
 #include "index_scanner.h"
 #include "../indices.h"
 #include "expression_execution.h"

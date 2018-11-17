@@ -67,7 +67,15 @@ void UpdateOperationExecutor::execute() {
 						.getColumn(setColumnName)
 						.getUnderlyingStorage<Type>();
 
-					underlyingStorage[realRowIndex] = newValue.getValue<Type>();
+					Type oldValueRaw = underlyingStorage[realRowIndex];
+					Type newValueRaw = newValue.getValue<Type>();
+					mTable.underlying().updateIndices(
+						setColumnName,
+						oldValueRaw,
+						newValueRaw,
+						realRowIndex);
+
+					underlyingStorage[realRowIndex] = newValueRaw;
 				};
 
 				handleGenericType(newValue.type, handleForType);

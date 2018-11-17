@@ -14,7 +14,7 @@ private:
 	std::unique_ptr<std::uint8_t[]> mUnderlyingStorage;
 public:
 	template<typename T>
-	using UnderlyingStorage = std::map<T, std::size_t>;
+	using UnderlyingStorage = std::multimap<T, std::size_t>;
 
 	/**
 	 * Creates a new tree index
@@ -74,5 +74,27 @@ public:
 	void insert(const T& value, std::size_t rowIndex) {
 		auto& underlyingIndex = getUnderlyingStorage<T>();
 		underlyingIndex.emplace(value, rowIndex);
+	}
+
+	/**
+	 * Updates the index entry for the given value
+	 * @tparam T The type of the value
+	 * @param oldValue The old value
+	 * @param newValue The new value
+	 * @param rowIndex The row index for the value
+	 */
+	template<typename T>
+	void update(const T& oldValue, const T& newValue, std::size_t rowIndex) {
+		auto& underlyingIndex = getUnderlyingStorage<T>();
+		auto rowIndexIterator = underlyingIndex.equal_range(oldValue);
+
+		for (auto it = rowIndexIterator.first; it != rowIndexIterator.second; ++it) {
+			if (it->second == rowIndex) {
+				underlyingIndex.erase(it);
+				break;
+			}
+		}
+
+		underlyingIndex.emplace(newValue, rowIndex);
 	}
 };
