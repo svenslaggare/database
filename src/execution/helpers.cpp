@@ -29,6 +29,17 @@ ExpressionExecutionEngine ExecutorHelpers::compile(VirtualTable& table, QueryExp
 	return executionEngine;
 }
 
+void ExecutorHelpers::forEachRowFiltered(VirtualTable& table,
+										 ExpressionExecutionEngine& filterExecutionEngine,
+										 std::function<void (std::size_t)> applyRow) {
+	for (std::size_t rowIndex = 0; rowIndex < table.numRows(); rowIndex++) {
+		filterExecutionEngine.execute(rowIndex);
+		if (filterExecutionEngine.popEvaluation().getValue<bool>()) {
+			applyRow(rowIndex);
+		}
+	}
+}
+
 void ExecutorHelpers::addRowToResult(std::vector<VirtualColumn*> columnsStorage, QueryResult& result, std::size_t rowIndex) {
 	for (std::size_t columnIndex = 0; columnIndex < columnsStorage.size(); columnIndex++) {
 		addColumnToResult(columnsStorage, result, rowIndex, columnIndex);

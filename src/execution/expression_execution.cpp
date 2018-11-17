@@ -32,6 +32,12 @@ void ExpressionExecutionEngine::replaceInstruction(std::size_t index, std::uniqu
 	mInstructions.at(index) = std::move(instruction);
 }
 
+void ExpressionExecutionEngine::makeCompareAlwaysTrue(std::size_t index) {
+	replaceInstruction(
+		index,
+		std::make_unique<QueryValueExpressionIR>(QueryValue(true)));
+}
+
 std::size_t ExpressionExecutionEngine::numSlots() const {
 	return mSlottedColumnStorage.size();
 }

@@ -22,6 +22,16 @@ namespace ExecutorHelpers {
 	ExpressionExecutionEngine compile(VirtualTable& table, QueryExpression* rootExpression);
 
 	/**
+	 * Applies the given function to each row with filtering
+	 * @param table The table
+	 * @param filterExecutionEngine The filtering execution
+	 * @param applyRow Function to apply on each row
+	 */
+	void forEachRowFiltered(VirtualTable& table,
+							ExpressionExecutionEngine& filterExecutionEngine,
+							std::function<void (std::size_t)> applyRow);
+
+	/**
 	 * Adds given row to the result
 	 * @param columnsStorage The storage of the columns
 	 * @param result The result

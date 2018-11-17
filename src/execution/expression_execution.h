@@ -132,6 +132,12 @@ public:
 	void replaceInstruction(std::size_t index, std::unique_ptr<ExpressionIR> instruction);
 
 	/**
+	 * Makes the given compare operation always true
+	 * @param index The index of the instruction
+	 */
+	void makeCompareAlwaysTrue(std::size_t index);
+
+	/**
 	 * Executes the expression on the given row
 	 * @param rowIndex The index of the row
 	 */

@@ -25,11 +25,9 @@ bool UpdateOperationExecutor::tryExecuteTreeIndexScan() {
 	if (!possibleIndexScans.empty()) {
 		auto& indexScan = possibleIndexScans[0];
 		std::cout << "Using index: " << indexScan.index.column().name() << std::endl;
-		treeIndexScanner.execute(context, indexScan, mWorkingStorage, mWorkingRowIndexStorage);
 
-		mFilterExecutionEngine.replaceInstruction(
-			indexScan.instructionIndex,
-			std::make_unique<QueryValueExpressionIR>(QueryValue(true)));
+		treeIndexScanner.execute(context, indexScan, mWorkingStorage, mWorkingRowIndexStorage);
+		mFilterExecutionEngine.makeCompareAlwaysTrue(indexScan.instructionIndex);
 	} else {
 		return false;
 	}
@@ -45,10 +43,10 @@ bool UpdateOperationExecutor::tryExecuteTreeIndexScan() {
 void UpdateOperationExecutor::execute() {
 	tryExecuteTreeIndexScan();
 
-	for (std::size_t rowIndex = 0; rowIndex < mTable.numRows(); rowIndex++) {
-		mFilterExecutionEngine.execute(rowIndex);
-
-		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
+	ExecutorHelpers::forEachRowFiltered(
+		mTable,
+		mFilterExecutionEngine,
+		[&](std::size_t rowIndex) {
 			std::size_t setIndex = 0;
 			for (auto& setExecutionEngine : mSetExecutionEngines) {
 				auto& setColumnName = mOperation->sets[setIndex]->column;
@@ -81,6 +79,5 @@ void UpdateOperationExecutor::execute() {
 				handleGenericType(newValue.type, handleForType);
 				setIndex++;
 			}
-		}
-	}
+		});
 }

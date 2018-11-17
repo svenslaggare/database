@@ -192,11 +192,9 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	if (!possibleIndexScans.empty()) {
 		auto& indexScan = possibleIndexScans[0];
 		std::cout << "Using index: " << indexScan.index.column().name() << std::endl;
-		treeIndexScanner.execute(context, indexScan, mWorkingStorage);
 
-		mFilterExecutionEngine.replaceInstruction(
-			indexScan.instructionIndex,
-			std::make_unique<QueryValueExpressionIR>(QueryValue(true)));
+		treeIndexScanner.execute(context, indexScan, mWorkingStorage);
+		mFilterExecutionEngine.makeCompareAlwaysTrue(indexScan.instructionIndex);
 	} else {
 		return false;
 	}
@@ -210,10 +208,10 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 }
 
 bool SelectOperationExecutor::executeDefault() {
-	for (std::size_t rowIndex = 0; rowIndex < mTable.numRows(); rowIndex++) {
-		mFilterExecutionEngine.execute(rowIndex);
-
-		if (mFilterExecutionEngine.popEvaluation().getValue<bool>()) {
+	ExecutorHelpers::forEachRowFiltered(
+		mTable,
+		mFilterExecutionEngine,
+		[&](std::size_t rowIndex) {
 			ExecutorHelpers::addRowToResult(
 				mProjectionExecutionEngines,
 				mReducedProjections,
@@ -223,8 +221,7 @@ bool SelectOperationExecutor::executeDefault() {
 			if (mOrderResult) {
 				addForOrdering(rowIndex);
 			}
-		}
-	}
+		});
 
 	return true;
 }
