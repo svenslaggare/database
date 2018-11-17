@@ -162,8 +162,10 @@ void TreeIndexScanner::execute(IndexScanContext& context,
 		for (auto it = iteratorRange.first; it != iteratorRange.second; ++it) {
 			auto rowIndex = it->second;
 
+			bool isFirstColumn = true;
 			for (std::size_t columnIndex = 0; columnIndex < columnsStorage.size(); columnIndex++) {
-				applyRow(rowIndex, columnIndex, columnsStorage[columnIndex]);
+				applyRow(rowIndex, columnIndex, columnsStorage[columnIndex], isFirstColumn);
+				isFirstColumn = false;
 			}
 		}
 	};
@@ -180,7 +182,35 @@ void TreeIndexScanner::execute(IndexScanContext& context,
 		[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {
 			resultsStorage.emplace_back(columnDefinition);
 		},
-		[&](std::size_t rowIndex, std::size_t columnIndex, const ColumnStorage* columnStorage) {
+		[&](std::size_t rowIndex, std::size_t columnIndex, const ColumnStorage* columnStorage, bool isFirstColumn) {
+			// Copy matched rows
+			auto& resultStorage = resultsStorage[columnIndex];
+
+			auto handleForType = [&](auto dummy) {
+				using Type = decltype(dummy);
+				resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
+			};
+
+			handleGenericType(columnStorage->type(), handleForType);
+		});
+}
+
+void TreeIndexScanner::execute(IndexScanContext& context,
+							   const PossibleIndexScan& indexScan,
+							   std::vector<ColumnStorage>& resultsStorage,
+							   std::vector<std::size_t>& resultRowIndices) {
+	execute(
+		context,
+		indexScan,
+		[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {
+			resultsStorage.emplace_back(columnDefinition);
+		},
+		[&](std::size_t rowIndex, std::size_t columnIndex, const ColumnStorage* columnStorage, bool isFirstColumn) {
+			// Save which row it correspond to
+			if (isFirstColumn) {
+				resultRowIndices.push_back(rowIndex);
+			}
+
 			// Copy matched rows
 			auto& resultStorage = resultsStorage[columnIndex];
 

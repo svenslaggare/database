@@ -56,10 +56,14 @@ public:
 	explicit VirtualTable(Table& table);
 
 	/**
-	 * Returns the underlying table. Should not be used for getting storage
-	 * @return
+	 * Returns the underlying table.
 	 */
-	const Table& underlying();
+	const Table& underlying() const;
+
+	/**
+	 * Returns the underlying table.
+	 */
+	Table& underlying();
 
 	/**
 	 * Returns the given virtual column

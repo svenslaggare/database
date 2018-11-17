@@ -24,7 +24,11 @@ VirtualTable::VirtualTable(Table& table)
 	mNumRows = mTable.numRows();
 }
 
-const Table& VirtualTable::underlying() {
+const Table& VirtualTable::underlying() const {
+	return mTable;
+}
+
+Table& VirtualTable::underlying() {
 	return mTable;
 }
 

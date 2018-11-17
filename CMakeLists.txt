@@ -45,6 +45,6 @@ set(SOURCE_FILES
         src/execution/index_scanner.cpp
         src/execution/index_scanner.h
         src/execution/virtual_table.cpp
-        src/execution/virtual_table.h)
+        src/execution/virtual_table.h src/execution/update_operation.cpp src/execution/update_operation.cpp src/execution/update_operation.h)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)

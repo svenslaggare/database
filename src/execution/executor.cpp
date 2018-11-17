@@ -4,6 +4,7 @@
 #include "../query_expressions/helpers.h"
 #include "../query_expressions/compiler.h"
 #include "select_operation.h"
+#include "update_operation.h"
 
 #include <iostream>
 
@@ -89,25 +90,11 @@ void OperationExecutorVisitor::visit(QueryUpdateOperation* operation) {
 			ExecutorHelpers::compile(virtualTable, set.get())));
 	}
 
-	for (std::size_t rowIndex = 0; rowIndex < virtualTable.numRows(); rowIndex++) {
-		filterExecutionEngine.execute(rowIndex);
+	UpdateOperationExecutor executor(
+		virtualTable,
+		operation,
+		setExecutionEngines,
+		filterExecutionEngine);
 
-		if (filterExecutionEngine.popEvaluation().getValue<bool>()) {
-			std::size_t setIndex = 0;
-			for (auto& setExecutionEngine : setExecutionEngines) {
-				auto& setColumnName = operation->sets[setIndex]->column;
-
-				setExecutionEngine->execute(rowIndex);
-				auto newValue = setExecutionEngine->popEvaluation();
-
-				auto handleForType = [&](auto dummy) {
-					using Type = decltype(dummy);
-					virtualTable.getColumn(setColumnName).storage()->getUnderlyingStorage<Type>()[rowIndex] = newValue.getValue<Type>();
-				};
-
-				handleGenericType(newValue.type, handleForType);
-				setIndex++;
-			}
-		}
-	}
+	executor.execute();
 }

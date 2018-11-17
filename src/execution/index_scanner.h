@@ -59,7 +59,7 @@ public:
 	std::vector<PossibleIndexScan> findPossibleIndexScans(IndexScanContext& context);
 
 	using OnColumnDefined = std::function<void (std::size_t, const ColumnDefinition&)>;
-	using ApplyRow = std::function<void (std::size_t, std::size_t, ColumnStorage*)>;
+	using ApplyRow = std::function<void (std::size_t, std::size_t, ColumnStorage*, bool)>;
 
 	/**
 	 * Executes the given index scan
@@ -81,4 +81,16 @@ public:
 	void execute(IndexScanContext& context,
 				 const PossibleIndexScan& indexScan,
 				 std::vector<ColumnStorage>& resultsStorage);
+
+	/**
+	 * Executes the given index scan and copies the results
+	 * @param context The scan context
+	 * @param indexScan The scan to execute
+	 * @param resultsStorage Where to store the result
+	 * @param resultRowIndices Saves which real row each result row corresponds to
+	 */
+	void execute(IndexScanContext& context,
+				 const PossibleIndexScan& indexScan,
+				 std::vector<ColumnStorage>& resultsStorage,
+				 std::vector<std::size_t>& resultRowIndices);
 };
