@@ -13,4 +13,5 @@ struct QueryExpressionVisitor {
 	virtual void visit(QueryExpression* parent, QueryAndExpression* expression) = 0;
 	virtual void visit(QueryExpression* parent, QueryCompareExpression* expression) = 0;
 	virtual void visit(QueryExpression* parent, QueryMathExpression* expression) = 0;
+	virtual void visit(QueryExpression* parent, QueryAssignExpression* expression) = 0;
 };

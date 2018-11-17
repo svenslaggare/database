@@ -106,8 +106,8 @@ struct QueryCompareExpression : public QueryExpression {
 	 * @param op The compare operation
 	 */
 	QueryCompareExpression(std::unique_ptr<QueryExpression> lhs,
-		   				   std::unique_ptr<QueryExpression> rhs,
-		   				   CompareOperator op);
+						   std::unique_ptr<QueryExpression> rhs,
+						   CompareOperator op);
 
 	virtual void accept(QueryExpressionVisitor& visitor, QueryExpression* parent) override;
 	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) override;
@@ -127,9 +127,27 @@ struct QueryMathExpression : public QueryExpression {
 	 * @param rhs The rhs
 	 * @param op The math operation
 	 */
-	explicit QueryMathExpression(std::unique_ptr<QueryExpression> lhs,
-								 std::unique_ptr<QueryExpression> rhs,
-								 MathOperator op);
+	QueryMathExpression(std::unique_ptr<QueryExpression> lhs,
+						std::unique_ptr<QueryExpression> rhs,
+						MathOperator op);
+
+	virtual void accept(QueryExpressionVisitor& visitor, QueryExpression* parent) override;
+	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) override;
+};
+
+/**
+ * Represents an assign expression
+ */
+struct QueryAssignExpression : public QueryExpression {
+	std::string column;
+	std::unique_ptr<QueryExpression> value;
+
+	/**
+	 * Creates a new assign expression
+	 * @param column The column to assign the value too
+	 * @param value The value to assign
+	 */
+	QueryAssignExpression(std::string column, std::unique_ptr<QueryExpression> value);
 
 	virtual void accept(QueryExpressionVisitor& visitor, QueryExpression* parent) override;
 	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) override;

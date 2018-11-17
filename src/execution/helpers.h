@@ -84,7 +84,7 @@ struct ReducedProjections {
 	std::int64_t indexOfColumn(const std::string& name) const;
 
 	/**
-	 * Returns the storage of the given column
+	 * Returns the storage of the given reduced column
 	 * @param name The name of the column
 	 */
 	VirtualColumn* getStorage(const std::string& name) const;

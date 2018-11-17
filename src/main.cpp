@@ -100,24 +100,31 @@ int main() {
 //			std::make_unique<QueryColumnReferenceExpression>("x"),
 //			std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.85) * 1)),
 //			CompareOperator::GreaterThan)
-//		std::make_unique<QueryAndExpression>(
-//			std::make_unique<QueryCompareExpression>(
-//				std::make_unique<QueryColumnReferenceExpression>("x"),
-//				std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.85) * 1)),
-//				CompareOperator::GreaterThan),
-//			std::make_unique<QueryCompareExpression>(
-//				std::make_unique<QueryColumnReferenceExpression>("x"),
-//				std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.90) * 1)),
-//				CompareOperator::LessThan))
 		std::make_unique<QueryAndExpression>(
-			std::make_unique<QueryCompareExpression>(
-				std::make_unique<QueryColumnReferenceExpression>("y"),
-				std::make_unique<QueryValueExpression>(QueryValue(35.0f)),
-				CompareOperator::LessThan),
 			std::make_unique<QueryCompareExpression>(
 				std::make_unique<QueryColumnReferenceExpression>("x"),
 				std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.85) * 1)),
-				CompareOperator::GreaterThan))
+				CompareOperator::GreaterThan),
+			std::make_unique<QueryCompareExpression>(
+				std::make_unique<QueryColumnReferenceExpression>("x"),
+				std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.90) * 1)),
+				CompareOperator::LessThan))
+//		std::make_unique<QueryAndExpression>(
+////			std::make_unique<QueryCompareExpression>(
+////				std::make_unique<QueryColumnReferenceExpression>("y"),
+////				std::make_unique<QueryValueExpression>(QueryValue(35.0f)),
+////				CompareOperator::LessThan),
+//			std::make_unique<QueryCompareExpression>(
+//				std::make_unique<QueryColumnReferenceExpression>("y"),
+//				std::make_unique<QueryMathExpression>(
+//					std::make_unique<QueryValueExpression>(QueryValue(15.0f)),
+//					std::make_unique<QueryValueExpression>(QueryValue(20.0f)),
+//					MathOperator::Add),
+//				CompareOperator::LessThan),
+//			std::make_unique<QueryCompareExpression>(
+//				std::make_unique<QueryColumnReferenceExpression>("x"),
+//				std::make_unique<QueryValueExpression>(QueryValue((std::int32_t)(count * 0.85) * 1)),
+//				CompareOperator::GreaterThan))
 //		std::unique_ptr<QueryExpression>()
 //		std::make_unique<QueryValueExpression>(QueryValue(true))
 //		std::make_unique<QueryCompareExpression>(
@@ -127,6 +134,19 @@ int main() {
 //		,std::make_unique<QueryColumnReferenceExpression>("x")
 //		,OrderingClause("y", false)
 	));
+
+	std::vector<std::unique_ptr<QueryAssignExpression>> sets;
+	sets.emplace_back(std::make_unique<QueryAssignExpression>(
+		"y",
+		std::make_unique<QueryMathExpression>(
+			std::make_unique<QueryColumnReferenceExpression>("y"),
+			std::make_unique<QueryValueExpression>(QueryValue(1000.0f)),
+			MathOperator::Add)));
+
+	auto updateQuery = createQuery(std::make_unique<QueryUpdateOperation>(
+		"test_table",
+		std::move(sets)));
+
 	Schema schema(
 		"test_table",
 		{
@@ -167,6 +187,11 @@ int main() {
 	{
 		Timing timing("execute insert query: ");
 		databaseEngine.execute(insertQuery, result);
+	}
+
+	{
+		Timing timing("execute update query: ");
+		databaseEngine.execute(updateQuery, result);
 	}
 
 	{

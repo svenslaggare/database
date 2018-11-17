@@ -21,12 +21,27 @@ void QuerySelectOperation::accept(QueryOperationVisitor& visitor) {
 	visitor.visit(this);
 }
 
-QueryInsertOperation::QueryInsertOperation(const std::string& table, std::vector<std::string> columns, std::vector<std::vector<QueryValue>> values)
+QueryInsertOperation::QueryInsertOperation(const std::string& table,
+										   std::vector<std::string> columns,
+										   std::vector<std::vector<QueryValue>> values)
 	: table(table), columns(std::move(columns)), values(std::move(values)) {
 
 }
 
 void QueryInsertOperation::accept(QueryOperationVisitor& visitor) {
+	visitor.visit(this);
+}
+
+QueryUpdateOperation::QueryUpdateOperation(std::string table,
+										   std::vector<std::unique_ptr<QueryAssignExpression>> sets,
+										   std::unique_ptr<QueryExpression> filter)
+	: table(std::move(table)),
+	  sets(std::move(sets)),
+	  filter(std::move(filter)) {
+
+}
+
+void QueryUpdateOperation::accept(QueryOperationVisitor& visitor) {
 	visitor.visit(this);
 }
 

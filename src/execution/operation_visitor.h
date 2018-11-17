@@ -7,4 +7,5 @@
 struct QueryOperationVisitor {
 	virtual void visit(QuerySelectOperation* operation) = 0;
 	virtual void visit(QueryInsertOperation* operation) = 0;
+	virtual void visit(QueryUpdateOperation* operation) = 0;
 };

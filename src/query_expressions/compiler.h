@@ -21,7 +21,9 @@ public:
 	 * @param executionEngine The execution engine
 	 * @param optimize Indicates if optimizations are enabled
 	 */
-	explicit QueryExpressionCompilerVisitor(VirtualTable& table, ExpressionExecutionEngine& executionEngine, bool optimize = true);
+	QueryExpressionCompilerVisitor(VirtualTable& table,
+								   ExpressionExecutionEngine& executionEngine,
+								   bool optimize = true);
 
 	/**
 	 * Compiles the given expression
@@ -35,4 +37,5 @@ public:
 	virtual void visit(QueryExpression* parent, QueryAndExpression* expression) override;
 	virtual void visit(QueryExpression* parent, QueryCompareExpression* expression) override;
 	virtual void visit(QueryExpression* parent, QueryMathExpression* expression) override;
+	virtual void visit(QueryExpression* parent, QueryAssignExpression* expression) override;
 };

@@ -77,7 +77,9 @@ struct QueryInsertOperation : public QueryOperation {
 	 * @param columns The columns to insert for
 	 * @param values The values for the columns.
 	 */
-	QueryInsertOperation(const std::string& table, std::vector<std::string> columns, std::vector<std::vector<QueryValue>> values);
+	QueryInsertOperation(const std::string& table,
+						 std::vector<std::string> columns,
+						 std::vector<std::vector<QueryValue>> values);
 
 	virtual void accept(QueryOperationVisitor& visitor) override;
 };
@@ -86,7 +88,21 @@ struct QueryInsertOperation : public QueryOperation {
  * Represents an update operation
  */
 struct QueryUpdateOperation : public QueryOperation {
+	std::string table;
+	std::vector<std::unique_ptr<QueryAssignExpression>> sets;
+	std::unique_ptr<QueryExpression> filter;
 
+	/**
+	 * Creates a new update operation
+	 * @param table The table
+	 * @param sets The set operations
+	 * @param filter The filtering
+	 */
+	QueryUpdateOperation(std::string table,
+						 std::vector<std::unique_ptr<QueryAssignExpression>> sets,
+						 std::unique_ptr<QueryExpression> filter = {});
+
+	virtual void accept(QueryOperationVisitor& visitor) override;
 };
 
 /**

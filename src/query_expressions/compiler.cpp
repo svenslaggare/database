@@ -102,3 +102,15 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryMathExp
 	mTypeEvaluationStack.push(op1);
 	mExecutionEngine.addInstruction(std::make_unique<MathOperationExpressionIR>(expression->op));
 }
+
+void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryAssignExpression* expression) {
+	expression->value->accept(*this, expression);
+	auto& column = mTable.getColumn(expression->column);
+
+	if (column.type() != mTypeEvaluationStack.top()) {
+		throw std::runtime_error(
+			"Expected type '" +
+			std::to_string((int)column.type()) + "' but got type '"
+			+ std::to_string((int)mTypeEvaluationStack.top()) + "'.");
+	}
+}

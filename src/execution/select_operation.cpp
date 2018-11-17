@@ -191,6 +191,7 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(context);
 	if (!possibleIndexScans.empty()) {
 		auto& indexScan = possibleIndexScans[0];
+		std::cout << "Using index: " << indexScan.index.column().name() << std::endl;
 		treeIndexScanner.execute(context, indexScan, mWorkingStorage);
 
 		mFilterExecutionEngine.replaceInstruction(

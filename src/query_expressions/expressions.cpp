@@ -109,3 +109,21 @@ void QueryMathExpression::accept(QueryExpressionVisitor& visitor, QueryExpressio
 void QueryMathExpression::update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) {
 
 }
+
+QueryAssignExpression::QueryAssignExpression(std::string column, std::unique_ptr<QueryExpression> value)
+	: column(column), value(std::move(value)) {
+
+}
+
+void QueryAssignExpression::accept(QueryExpressionVisitor& visitor, QueryExpression* parent) {
+	visitor.visit(parent, this);
+}
+
+void QueryAssignExpression::update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) {
+	if (oldExpression == value.get()) {
+		value = std::move(newExpression);
+		return;
+	}
+
+	throw std::runtime_error("old expression not sub-expression.");
+}

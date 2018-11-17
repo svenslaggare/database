@@ -21,4 +21,5 @@ public:
 
 	virtual void visit(QuerySelectOperation* operation) override;
 	virtual void visit(QueryInsertOperation* operation) override;
+	virtual void visit(QueryUpdateOperation* operation) override;
 };
