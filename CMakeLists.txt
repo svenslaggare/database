@@ -57,9 +57,9 @@ set(TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 find_package(CxxTest)
 if(CXXTEST_FOUND)
     add_custom_target(
-            check ${CMAKE_COMMAND} -E env CTEST_OUTPUT_ON_FAILURE=1
-            ${CMAKE_CTEST_COMMAND} -C $<CONFIG> --verbose
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+        run_all_tests ${CMAKE_COMMAND} -E env CTEST_OUTPUT_ON_FAILURE=1
+        ${CMAKE_CTEST_COMMAND} -C $<CONFIG> --verbose
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
     add_library(TestLib STATIC ${SOURCE_FILES} ${TESTS_DIR}/test_helpers.h)
 
@@ -69,18 +69,27 @@ if(CXXTEST_FOUND)
     add_executable(tests-dummy ${TESTS_DIR}/dummy.cpp)
     target_link_libraries(tests-dummy TestLib)
 
-    macro(add_test_case TEST_FILE)
+    macro(add_test_case TEST_TARGET_NAME TEST_FILE)
+        CXXTEST_ADD_TEST(${TEST_TARGET_NAME} "${TEST_TARGET_NAME}-runner.cpp" ${TESTS_DIR}/${TEST_FILE})
+        target_link_libraries(${TEST_TARGET_NAME} TestLib)
+        add_dependencies(run_all_tests ${TEST_TARGET_NAME})
+    endmacro()
+
+    macro(add_test_case_with_defines TEST_TARGET_NAME TEST_FILE DEFINES)
+        add_test_case(${TEST_TARGET_NAME} ${TEST_FILE})
+        target_compile_definitions(${TEST_TARGET_NAME} PUBLIC ${DEFINES})
+    endmacro()
+
+    macro(add_test_case_default_name TEST_FILE)
         string(REPLACE "_" "-" TEST_TARGET_NAME ${TEST_FILE})
         string(REPLACE ".h" "" TEST_TARGET_NAME ${TEST_TARGET_NAME})
         SET(TEST_TARGET_NAME "tests-${TEST_TARGET_NAME}")
 
-        CXXTEST_ADD_TEST(${TEST_TARGET_NAME} "${TEST_TARGET_NAME}-runner.cpp" ${TESTS_DIR}/${TEST_FILE})
-        target_link_libraries(${TEST_TARGET_NAME} TestLib)
-        add_dependencies(check ${TEST_TARGET_NAME})
+        add_test_case(${TEST_TARGET_NAME} ${TEST_FILE})
     endmacro()
 
-    add_test_case(select_simple.h)
-    add_test_case(select_simple_optimize_expressions.h)
-    add_test_case(select_simple_optimize_full.h)
-    add_test_case(select_index.h)
+    add_test_case_default_name(select_simple.h)
+    add_test_case_with_defines(tests-select-simple-optimize-expression select_simple.h OPTIMIZE_EXPRESSIONS)
+    add_test_case_with_defines(tests-select-simple-optimize-full select_simple.h OPTIMIZE_FULL)
+    add_test_case_default_name(select_index.h)
 endif()

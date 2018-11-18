@@ -113,6 +113,7 @@ void ExpressionIROptimizer::optimize() {
 	auto& instructions = mExecutionEngine.instructions();
 	auto it = instructions.begin();
 
+//	std::size_t before = instructions.size();
 	while (it != instructions.end()) {
 		auto current = it->get();
 		if (optimizeCompare(it, current)) {
@@ -123,4 +124,6 @@ void ExpressionIROptimizer::optimize() {
 
 		++it;
 	}
+
+//	std::cout << "Optimizations reduced instructions by " << ((std::int64_t)before - (std::int64_t)instructions.size()) << std::endl;
 }

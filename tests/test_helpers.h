@@ -17,6 +17,24 @@ DatabaseConfiguration defaultTestConfig() {
 	DatabaseConfiguration config;
 	config.optimizeExpressions = false;
 	config.optimizeExecution = false;
+
+#ifdef OPTIMIZE_EXPRESSIONS
+	config.optimizeExpressions = true;
+	config.optimizeExecution = false;
+#endif
+
+#ifdef OPTIMIZE_FULL
+	config.optimizeExpressions = true;
+	config.optimizeExecution = true;
+#endif
+
+	return config;
+}
+
+DatabaseConfiguration noOptimizationsTestConfig() {
+	DatabaseConfiguration config;
+	config.optimizeExpressions = true;
+	config.optimizeExecution = false;
 	return config;
 }
 

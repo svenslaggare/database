@@ -1,8 +1,6 @@
 #pragma once
 #include <iostream>
-
 #include <cxxtest/TestSuite.h>
-
 #include "test_helpers.h"
 
 class SelectSimpleTestSuite : public CxxTest::TestSuite {
@@ -55,6 +53,28 @@ public:
 				createColumn("x"),
 				createValue(QueryValue(500)),
 				CompareOperator::LessThan)
+		));
+
+		QueryResult result;
+		databaseEngine->execute(query, result);
+		TS_ASSERT_EQUALS(result.columns.size(), 1);
+		TS_ASSERT_EQUALS(result.columns[0].size(), 500);
+
+		for (std::size_t i = 0; i < result.columns[0].size(); i++) {
+			ASSERT_EQUALS_DB_ENTRY(result.columns[0].getValue(i), tableData[i][0], i, 0);
+		}
+	}
+
+	void testFilteringOneColumn2() {
+		std::vector<std::vector<QueryValue>> tableData;
+		auto databaseEngine = setupTest(tableData);
+		auto query = createQuery(std::make_unique<QuerySelectOperation>(
+			"test_table",
+			QueryExpressionHelpers::createColumnReferences({ "x" }),
+			std::make_unique<QueryCompareExpression>(
+				createValue(QueryValue(500)),
+				createColumn("x"),
+				CompareOperator::GreaterThan)
 		));
 
 		QueryResult result;
