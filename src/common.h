@@ -128,6 +128,9 @@ struct QueryValue {
 
 		return data.getValue<T>();
 	}
+
+	bool operator==(const QueryValue& rhs) const;
+	bool operator!=(const QueryValue& rhs) const;
 };
 
 

@@ -34,15 +34,21 @@ public:
 	ColumnType type() const;
 
 	/**
+	 * Returns the number of rows stored
+	 */
+	std::size_t size() const;
+
+	/**
+	 * Returns the value at the given index
+	 * @param index The index
+	 */
+	QueryValue getValue(std::size_t index) const;
+
+	/**
 	 * Create underlying storage for the given type
 	 * @param type The type of the data
 	 */
 	static std::unique_ptr<std::uint8_t[]> createUnderlyingStorage(ColumnType type);
-
-	/**
-	 * Returns the number of rows stored
-	 */
-	std::size_t size() const;
 
 	/**
 	 * Returns the underlying storage

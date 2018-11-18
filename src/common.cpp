@@ -43,3 +43,20 @@ QueryValue::QueryValue(bool value)
 	: type(ColumnType::Bool) {
 	setBinaryRepresentation(data.data, value);
 }
+
+bool QueryValue::operator==(const QueryValue& rhs) const {
+	if (type != rhs.type) {
+		return false;
+	}
+
+	auto handleForType = [&](auto dummy) {
+		using Type = decltype(dummy);
+		return this->getValue<Type>() == rhs.getValue<Type>();
+	};
+
+	return handleGenericTypeResult(bool, type, handleForType);
+}
+
+bool QueryValue::operator!=(const QueryValue& rhs) const {
+	return !(*this == rhs);
+}

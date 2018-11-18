@@ -5,6 +5,15 @@
 #include <iostream>
 #include <stack>
 
+DatabaseEngine::DatabaseEngine(DatabaseConfiguration config)
+	: mConfig(config) {
+
+}
+
+const DatabaseConfiguration& DatabaseEngine::config() const {
+	return mConfig;
+}
+
 void DatabaseEngine::addTable(std::string name, std::unique_ptr<Table> table) {
 	mTables.insert(std::make_pair(name, std::move(table)));
 }

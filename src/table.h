@@ -97,6 +97,9 @@ public:
 	 */
 	explicit Table(Schema schema);
 
+	Table(const Table&) = delete;
+	Table& operator=(const Table&) = delete;
+
 	/**
 	 * Returns the schema
 	 */

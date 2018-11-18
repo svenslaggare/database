@@ -48,11 +48,9 @@ namespace {
 				break;
 			case CompareOperator::LessThan: {
 				startIterator = underlyingIndex.begin();
-				endIterator = underlyingIndex.upper_bound(indexSearchValue);
+				endIterator = underlyingIndex.lower_bound(indexSearchValue);
 
-				if (endIterator != underlyingIndex.end()) {
-					--endIterator;
-				} else {
+				if (endIterator == underlyingIndex.end()) {
 					startIterator = underlyingIndex.end();
 					endIterator = underlyingIndex.end();
 				}
@@ -77,12 +75,10 @@ namespace {
 				}
 				break;
 			case CompareOperator::GreaterThanOrEqual:
-				startIterator = underlyingIndex.upper_bound(indexSearchValue);
+				startIterator = underlyingIndex.lower_bound(indexSearchValue);
 				endIterator = underlyingIndex.end();
 
-				if (startIterator != underlyingIndex.end()) {
-					--startIterator;
-				} else {
+				if (startIterator == underlyingIndex.end()) {
 					startIterator = underlyingIndex.end();
 					endIterator = underlyingIndex.end();
 				}

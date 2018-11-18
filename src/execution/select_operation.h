@@ -12,12 +12,12 @@ struct QueryResult;
  */
 class SelectOperationExecutor {
 private:
+	DatabaseEngine& mDatabaseEngine;
 	VirtualTable& mTable;
 	QuerySelectOperation* mOperation;
 	std::vector<std::unique_ptr<ExpressionExecutionEngine>>& mProjectionExecutionEngines;
 	ExpressionExecutionEngine& mFilterExecutionEngine;
 	QueryResult& mResult;
-	bool mOptimize;
 
 	bool mOrderResult = false;
 	std::unique_ptr<ExpressionExecutionEngine> mOrderExecutionEngine;
@@ -43,19 +43,19 @@ private:
 public:
 	/**
 	 * Creates a new select operation executor
+	 * @param databaseEngine The database engine
 	 * @param table The table
 	 * @param operation The operation
 	 * @param projectionExecutionEngines The projection execution engines
 	 * @param filterExecutionEngine The filter execution engine
 	 * @param result The result
-	 * @param optimize Indicates if to optimize the execution
 	 */
-	SelectOperationExecutor(VirtualTable& table,
+	SelectOperationExecutor(DatabaseEngine& databaseEngine,
+							VirtualTable& table,
 							QuerySelectOperation* operation,
 							std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projectionExecutionEngines,
 							ExpressionExecutionEngine& filterExecutionEngine,
-							QueryResult& result,
-							bool optimize = true);
+							QueryResult& result);
 
 	/**
 	 * Executes the operation

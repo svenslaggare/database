@@ -3,8 +3,9 @@
 #include <vector>
 #include <memory>
 #include "../common.h"
+#include "../database_engine.h"
 
-struct ColumnStorage;
+class ColumnStorage;
 struct QueryResult;
 struct ExpressionExecutionEngine;
 struct QueryExpression;
@@ -18,8 +19,11 @@ namespace ExecutorHelpers {
 	 * Compiles the given expression
 	 * @param table The table
 	 * @param rootExpression The root expression
+	 * @param config The database configuration
 	 */
-	ExpressionExecutionEngine compile(VirtualTable& table, QueryExpression* rootExpression);
+	ExpressionExecutionEngine compile(VirtualTable& table,
+									  QueryExpression* rootExpression,
+									  const DatabaseConfiguration& config);
 
 	/**
 	 * Applies the given function to each row with filtering

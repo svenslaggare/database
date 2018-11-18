@@ -8,12 +8,31 @@ struct Query;
 struct QueryResult;
 
 /**
+ * The database configuration
+ */
+struct DatabaseConfiguration {
+	bool optimizeExpressions = true;
+	bool optimizeExecution = false;
+};
+
+/**
  * Represents the database engine
  */
 class DatabaseEngine {
 private:
+	DatabaseConfiguration mConfig;
 	std::unordered_map<std::string, std::unique_ptr<Table>> mTables;
 public:
+	/**
+	 * Creates a new database engine
+	 */
+	explicit DatabaseEngine(DatabaseConfiguration config = {});
+
+	/**
+	 * Returns the configuration
+	 */
+	const DatabaseConfiguration& config() const;
+
 	/**
 	 * Adds a new table
 	 * @param name The name of the table

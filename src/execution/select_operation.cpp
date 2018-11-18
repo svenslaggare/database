@@ -8,19 +8,19 @@
 #include <iostream>
 #include <algorithm>
 
-SelectOperationExecutor::SelectOperationExecutor(VirtualTable& table,
+SelectOperationExecutor::SelectOperationExecutor(DatabaseEngine& databaseEngine,
+												 VirtualTable& table,
 												 QuerySelectOperation* operation,
 												 std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projectionExecutionEngines,
 												 ExpressionExecutionEngine& filterExecutionEngine,
-												 QueryResult& result,
-												 bool optimize)
-	: mTable(table),
+												 QueryResult& result)
+	: mDatabaseEngine(databaseEngine),
+	  mTable(table),
 	  mOperation(operation),
 	  mProjectionExecutionEngines(projectionExecutionEngines),
 	  mFilterExecutionEngine(filterExecutionEngine),
-	  mResult(result),
-	  mOptimize(optimize) {
-	if (optimize) {
+	  mResult(result) {
+	if (databaseEngine.config().optimizeExecution) {
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeNoFilter, this));
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterLeftIsColumn, this));
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterRightIsColumn, this));
@@ -78,6 +78,7 @@ bool SelectOperationExecutor::executeNoFilter() {
 				}
 			}
 
+			std::cout << "executed: executeNoFilter" << std::endl;
 			return true;
 		}
 	}
@@ -177,6 +178,7 @@ bool SelectOperationExecutor::executeFilterBothColumn() {
 			};
 
 			handleGenericType(lhsColumn.type(), handleForType);
+			std::cout << "executed: executeFilterBothColumn" << std::endl;
 			return true;
 		}
 	}
@@ -230,8 +232,10 @@ void SelectOperationExecutor::execute() {
 	if (!mOperation->order.name.empty()) {
 		mOrderResult = true;
 		auto orderRootExpression = std::make_unique<QueryColumnReferenceExpression>(mOperation->order.name);
-		mOrderExecutionEngine = std::make_unique<ExpressionExecutionEngine>(
-			ExecutorHelpers::compile(mTable, orderRootExpression.get()));
+		mOrderExecutionEngine = std::make_unique<ExpressionExecutionEngine>(ExecutorHelpers::compile(
+			mTable,
+			orderRootExpression.get(),
+			mDatabaseEngine.config()));
 	}
 
 	mReducedProjections.tryReduce(mOperation->projections, mTable);

@@ -23,23 +23,29 @@ void OperationExecutorVisitor::visit(QuerySelectOperation* operation) {
 
 	VirtualTable virtualTable(databaseEngine.getTable(operation->table));
 
-	auto filterExecutionEngine = ExecutorHelpers::compile(virtualTable, filterExpression.get());
+	auto filterExecutionEngine = ExecutorHelpers::compile(
+		virtualTable,
+		filterExpression.get(),
+		databaseEngine.config());
 
 	std::vector<std::unique_ptr<ExpressionExecutionEngine>> projectionExecutionEngines;
 	for (auto& projection : operation->projections) {
 		projectionExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>(
-			ExecutorHelpers::compile(virtualTable, projection.get())));
+			ExecutorHelpers::compile(
+				virtualTable,
+				projection.get(),
+				databaseEngine.config())));
 
 		result.columns.emplace_back(projectionExecutionEngines.back()->expressionType());
 	}
 
 	SelectOperationExecutor executor(
+		databaseEngine,
 		virtualTable,
 		operation,
 		projectionExecutionEngines,
 		filterExecutionEngine,
-		result,
-		false);
+		result);
 
 	executor.execute();
 }
@@ -82,12 +88,18 @@ void OperationExecutorVisitor::visit(QueryUpdateOperation* operation) {
 		filterExpression = std::make_unique<QueryValueExpression>(QueryValue(true));
 	}
 
-	auto filterExecutionEngine = ExecutorHelpers::compile(virtualTable, filterExpression.get());
+	auto filterExecutionEngine = ExecutorHelpers::compile(
+		virtualTable,
+		filterExpression.get(),
+		databaseEngine.config());
 
 	std::vector<std::unique_ptr<ExpressionExecutionEngine>> setExecutionEngines;
 	for (auto& set : operation->sets) {
 		setExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>(
-			ExecutorHelpers::compile(virtualTable, set.get())));
+			ExecutorHelpers::compile(
+				virtualTable,
+				set.get(),
+				databaseEngine.config())));
 	}
 
 	UpdateOperationExecutor executor(

@@ -32,3 +32,12 @@ std::size_t ColumnStorage::size() const {
 
 	return handleGenericTypeResult(std::size_t, mType, handleForType);
 }
+
+QueryValue ColumnStorage::getValue(std::size_t index) const {
+	auto handleForType = [&](auto dummy) {
+		using Type = decltype(dummy);
+		return QueryValue(this->getUnderlyingStorage<Type>()[index]);
+	};
+
+	return handleGenericTypeResult(QueryValue, mType, handleForType);
+}

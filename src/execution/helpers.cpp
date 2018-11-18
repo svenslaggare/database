@@ -22,9 +22,11 @@ namespace {
 	}
 }
 
-ExpressionExecutionEngine ExecutorHelpers::compile(VirtualTable& table, QueryExpression* rootExpression) {
+ExpressionExecutionEngine ExecutorHelpers::compile(VirtualTable& table,
+												   QueryExpression* rootExpression,
+												   const DatabaseConfiguration& config) {
 	ExpressionExecutionEngine executionEngine;
-	QueryExpressionCompilerVisitor expressionCompilerVisitor(table, executionEngine);
+	QueryExpressionCompilerVisitor expressionCompilerVisitor(table, executionEngine, config.optimizeExpressions);
 	expressionCompilerVisitor.compile(rootExpression);
 	return executionEngine;
 }
