@@ -204,4 +204,67 @@ public:
 			ASSERT_EQUALS_DB_ENTRY(result.columns[1].getValue(i), column3[i], i, 2);
 		}
 	}
+
+	void testOrdering() {
+		std::vector<std::vector<QueryValue>> tableData;
+		auto databaseEngine = setupTest(tableData);
+		auto query = createQuery(std::make_unique<QuerySelectOperation>(
+			"test_table",
+			QueryExpressionHelpers::createColumnReferences({ "x" }),
+			std::unique_ptr<QueryExpression>(),
+			OrderingClause("x")
+		));
+
+		QueryResult result;
+		databaseEngine->execute(query, result);
+		TS_ASSERT_EQUALS(result.columns.size(), 1);
+		TS_ASSERT_EQUALS(result.columns[0].size(), tableData.size());
+
+		for (std::size_t i = 0; i < result.columns[0].size(); i++) {
+			ASSERT_EQUALS_DB_ENTRY(result.columns[0].getValue(i), tableData[i][0], i, 0);
+		}
+	}
+
+	void testOrdering2() {
+		std::vector<std::vector<QueryValue>> tableData;
+		auto databaseEngine = setupTest(tableData);
+		auto query = createQuery(std::make_unique<QuerySelectOperation>(
+			"test_table",
+			QueryExpressionHelpers::createColumnReferences({ "x" }),
+			std::unique_ptr<QueryExpression>(),
+			OrderingClause("x", true)
+		));
+
+		QueryResult result;
+		databaseEngine->execute(query, result);
+		TS_ASSERT_EQUALS(result.columns.size(), 1);
+		TS_ASSERT_EQUALS(result.columns[0].size(), tableData.size());
+
+		for (std::size_t i = 0; i < result.columns[0].size(); i++) {
+			ASSERT_EQUALS_DB_ENTRY(result.columns[0].getValue(i), tableData[result.columns[0].size() - 1 - i][0], i, 0);
+		}
+	}
+
+	void testOrderingWithFiltering() {
+		std::vector<std::vector<QueryValue>> tableData;
+		auto databaseEngine = setupTest(tableData);
+		auto query = createQuery(std::make_unique<QuerySelectOperation>(
+			"test_table",
+			QueryExpressionHelpers::createColumnReferences({ "x" }),
+			std::make_unique<QueryCompareExpression>(
+				createColumn("x"),
+				createValue(QueryValue(500)),
+				CompareOperator::LessThan),
+			OrderingClause("x")
+		));
+
+		QueryResult result;
+		databaseEngine->execute(query, result);
+		TS_ASSERT_EQUALS(result.columns.size(), 1);
+		TS_ASSERT_EQUALS(result.columns[0].size(), 500);
+
+		for (std::size_t i = 0; i < result.columns[0].size(); i++) {
+			ASSERT_EQUALS_DB_ENTRY(result.columns[0].getValue(i), tableData[i][0], i, 0);
+		}
+	}
 };

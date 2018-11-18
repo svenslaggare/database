@@ -71,6 +71,28 @@ public:
 		ASSERT_EQUALS_DB_ENTRY(result.columns[0].getValue(0), tableData[500][0], 0, 0);
 	}
 
+	void testSimpleIndexing4() {
+		std::vector<std::vector<QueryValue>> tableData;
+		auto databaseEngine = setupTest(tableData, optimizeExpressionsTestConfig(), { "x" });
+		auto query = createQuery(std::make_unique<QuerySelectOperation>(
+			"test_table",
+			QueryExpressionHelpers::createColumnReferences({ "x" }),
+			std::make_unique<QueryCompareExpression>(
+				createValue(QueryValue(500)),
+				createColumn("x"),
+				CompareOperator::GreaterThan)
+		));
+
+		QueryResult result;
+		databaseEngine->execute(query, result);
+		TS_ASSERT_EQUALS(result.columns.size(), 1);
+		TS_ASSERT_EQUALS(result.columns[0].size(), 500);
+
+		for (std::size_t i = 0; i < result.columns[0].size(); i++) {
+			ASSERT_EQUALS_DB_ENTRY(result.columns[0].getValue(i), tableData[i][0], i, 0);
+		}
+	}
+
 	void testIndexNonPrimary() {
 		std::vector<std::vector<QueryValue>> tableData;
 		auto databaseEngine = setupTest(tableData, optimizeExpressionsTestConfig(), { "z" });
