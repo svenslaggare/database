@@ -74,3 +74,11 @@ std::unique_ptr<DatabaseEngine> setupTest(std::vector<std::vector<QueryValue>>& 
 
 	return databaseEngine;
 }
+
+std::unique_ptr<QueryValueExpression> createValue(QueryValue value) {
+	return std::make_unique<QueryValueExpression>(value);
+}
+
+std::unique_ptr<QueryColumnReferenceExpression> createColumn(const std::string& column) {
+	return std::make_unique<QueryColumnReferenceExpression>(column);
+}

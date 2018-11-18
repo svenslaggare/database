@@ -52,8 +52,8 @@ public:
 			"test_table",
 			QueryExpressionHelpers::createColumnReferences({ "x" }),
 			std::make_unique<QueryCompareExpression>(
-				std::make_unique<QueryColumnReferenceExpression>("x"),
-				std::make_unique<QueryValueExpression>(QueryValue(500)),
+				createColumn("x"),
+				createValue(QueryValue(500)),
 				CompareOperator::LessThan)
 		));
 
@@ -74,8 +74,8 @@ public:
 			"test_table",
 			QueryExpressionHelpers::createColumnReferences({ "x", "y", "z" }),
 			std::make_unique<QueryCompareExpression>(
-				std::make_unique<QueryColumnReferenceExpression>("x"),
-				std::make_unique<QueryValueExpression>(QueryValue(500)),
+				createColumn("x"),
+				createValue(QueryValue(500)),
 				CompareOperator::LessThan)
 		));
 
@@ -99,12 +99,12 @@ public:
 			QueryExpressionHelpers::createColumnReferences({ "x", "y", "z" }),
 			std::make_unique<QueryAndExpression>(
 				std::make_unique<QueryCompareExpression>(
-					std::make_unique<QueryColumnReferenceExpression>("x"),
-					std::make_unique<QueryValueExpression>(QueryValue(500)),
+					createColumn("x"),
+					createValue(QueryValue(500)),
 					CompareOperator::GreaterThanOrEqual),
 				std::make_unique<QueryCompareExpression>(
-					std::make_unique<QueryColumnReferenceExpression>("x"),
-					std::make_unique<QueryValueExpression>(QueryValue(600)),
+					createColumn("x"),
+					createValue(QueryValue(600)),
 					CompareOperator::LessThan))
 		));
 
@@ -127,16 +127,16 @@ public:
 
 		std::vector<std::unique_ptr<QueryExpression>> projections;
 		projections.emplace_back(std::make_unique<QueryMathExpression>(
-			std::make_unique<QueryColumnReferenceExpression>("x"),
-			std::make_unique<QueryValueExpression>(QueryValue(100)),
+			createColumn("x"),
+			createValue(QueryValue(100)),
 			MathOperator::Add));
 
 		auto query = createQuery(std::make_unique<QuerySelectOperation>(
 			"test_table",
 			std::move(projections),
 			std::make_unique<QueryCompareExpression>(
-				std::make_unique<QueryColumnReferenceExpression>("x"),
-				std::make_unique<QueryValueExpression>(QueryValue(500)),
+				createColumn("x"),
+				createValue(QueryValue(500)),
 				CompareOperator::LessThan)
 		));
 
@@ -160,8 +160,8 @@ public:
 			"test_table",
 			QueryExpressionHelpers::createColumnReferences({ "x", "z" }),
 			std::make_unique<QueryCompareExpression>(
-				std::make_unique<QueryColumnReferenceExpression>("z"),
-				std::make_unique<QueryValueExpression>(QueryValue(searchValue)),
+				createColumn("z"),
+				createValue(QueryValue(searchValue)),
 				CompareOperator::LessThan)
 		));
 
