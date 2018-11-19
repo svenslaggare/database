@@ -212,6 +212,7 @@ public:
 			"test_table",
 			QueryExpressionHelpers::createColumnReferences({ "x" }),
 			std::unique_ptr<QueryExpression>(),
+			JoinClause(),
 			OrderingClause("x")
 		));
 
@@ -232,6 +233,7 @@ public:
 			"test_table",
 			QueryExpressionHelpers::createColumnReferences({ "x" }),
 			std::unique_ptr<QueryExpression>(),
+			JoinClause(),
 			OrderingClause("x", true)
 		));
 
@@ -255,6 +257,7 @@ public:
 				createColumn("x"),
 				createValue(QueryValue(500)),
 				CompareOperator::LessThan),
+			JoinClause(),
 			OrderingClause("x")
 		));
 

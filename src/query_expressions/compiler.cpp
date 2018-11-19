@@ -2,8 +2,18 @@
 #include "helpers.h"
 #include "ir_optimizer.h"
 
-QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(VirtualTable& table, ExpressionExecutionEngine& executionEngine, bool optimize)
-	: mTable(table), mExecutionEngine(executionEngine), mOptimize(optimize) {
+namespace {
+
+}
+
+QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(VirtualTableContainer& tableContainer,
+															   const std::string& mainTable,
+															   ExpressionExecutionEngine& executionEngine,
+															   bool optimize)
+	: mTableContainer(tableContainer),
+	  mMainTable(tableContainer.getTable(mainTable)),
+	  mExecutionEngine(executionEngine),
+	  mOptimize(optimize) {
 
 }
 
@@ -14,7 +24,7 @@ void QueryExpressionCompilerVisitor::compile(QueryExpression* rootExpression) {
 		optimizer.optimize();
 	}
 
-	mExecutionEngine.fillSlots(mTable);
+	mExecutionEngine.fillSlots(mTableContainer);
 
 	if (mTypeEvaluationStack.size() != 1) {
 		throw std::runtime_error("Expected one value on the stack.");
@@ -28,8 +38,14 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryRootExp
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryColumnReferenceExpression* expression) {
-	mExecutionEngine.addInstruction(std::make_unique<ColumnReferenceExpressionIR>(mExecutionEngine.getSlot(expression->name)));
-	mTypeEvaluationStack.push(mTable.getColumn(expression->name).type());
+	auto columnNameParts = QueryExpressionHelpers::splitColumnName(
+		expression->name,
+		mMainTable.underlying().schema().name());
+
+	auto columnSlot = mExecutionEngine.getSlot(columnNameParts.first, columnNameParts.second);
+
+	mExecutionEngine.addInstruction(std::make_unique<ColumnReferenceExpressionIR>(columnSlot));
+	mTypeEvaluationStack.push(mTableContainer.getTable(columnNameParts.first).getColumn(columnNameParts.second).type());
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryValueExpression* expression) {
@@ -105,7 +121,7 @@ void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryMathExp
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryAssignExpression* expression) {
 	expression->value->accept(*this, expression);
-	auto& column = mTable.getColumn(expression->column);
+	auto& column = mMainTable.getColumn(expression->column);
 
 	if (column.type() != mTypeEvaluationStack.top()) {
 		throw std::runtime_error(

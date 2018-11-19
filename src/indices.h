@@ -4,12 +4,14 @@
 #include <memory>
 
 class ColumnDefinition;
+class Schema;
 
 /**
  * Represents a Tree index
  */
 class TreeIndex {
 private:
+	const Schema& mSchema;
 	const ColumnDefinition& mColumn;
 	std::unique_ptr<std::uint8_t[]> mUnderlyingStorage;
 public:
@@ -18,12 +20,18 @@ public:
 
 	/**
 	 * Creates a new tree index
+	 * @param schema The schema to add the index for
 	 * @param column The column to index on
 	 */
-	explicit TreeIndex(const ColumnDefinition& column);
+	TreeIndex(const Schema& schema, const ColumnDefinition& column);
 
 	/**
-	 * Returns the column that is hashed on
+	 * Returns the full name of the column being indexed on
+	 */
+	std::string columnName() const;
+
+	/**
+	 * Returns the column that is index on
 	 */
 	const ColumnDefinition& column() const;
 

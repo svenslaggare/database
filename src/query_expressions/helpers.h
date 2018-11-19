@@ -66,4 +66,11 @@ namespace QueryExpressionHelpers {
 	 * @param op The operator
 	 */
 	CompareOperator otherSideCompareOp(CompareOperator op);
+
+	/**
+	 * Splits the given column name into table name + column name
+	 * @param name The full column name
+	 * @param mainTable The main table to use if no table exists
+	 */
+	std::pair<std::string, std::string> splitColumnName(const std::string& name, const std::string& mainTable = "");
 }

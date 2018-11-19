@@ -12,16 +12,19 @@ struct QueryExpression;
 class Table;
 class VirtualTable;
 class VirtualColumn;
+class VirtualTableContainer;
 struct ReducedProjections;
 
 namespace ExecutorHelpers {
 	/**
 	 * Compiles the given expression
-	 * @param table The table
+	 * @param tableContainer The table container
+	 * @param mainTable The main table
 	 * @param rootExpression The root expression
 	 * @param config The database configuration
 	 */
-	ExpressionExecutionEngine compile(VirtualTable& table,
+	ExpressionExecutionEngine compile(VirtualTableContainer& tableContainer,
+									  const std::string& mainTable,
 									  QueryExpression* rootExpression,
 									  const DatabaseConfiguration& config);
 
@@ -72,9 +75,12 @@ namespace ExecutorHelpers {
  * Tries to reduce projections to column references
  */
 struct ReducedProjections {
+	std::string mainTable;
 	std::vector<std::string> columns;
 	std::vector<VirtualColumn*> storage;
 	bool allReduced = false;
+
+	ReducedProjections(const std::string& mainTable);
 
 	/**
 	 * Tries to reduce the given projections
@@ -87,9 +93,10 @@ struct ReducedProjections {
 	/**
 	 * Tries to reduce the given projections
 	 * @param projections The projection
-	 * @param table The table
+	 * @param tableContainer The table container
 	 */
-	void tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, VirtualTable& table);
+	void tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections,
+				   VirtualTableContainer& tableContainer);
 
 	/**
 	 * Returns the index of the reduced column

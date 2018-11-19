@@ -2,17 +2,24 @@
 #include "execution/operation_visitor.h"
 
 OrderingClause::OrderingClause(const std::string& name, bool ascending)
-	: name(name), descending(ascending) {
+	: empty(false), name(name), descending(ascending) {
+
+}
+
+JoinClause::JoinClause(const std::string& joinFromColumn, const std::string& joinOnTable, const std::string& joinOnColumn)
+	: empty(false), joinFromColumn(joinFromColumn), joinOnTable(joinOnTable), joinOnColumn(joinOnColumn) {
 
 }
 
 QuerySelectOperation::QuerySelectOperation(std::string table,
 										   std::vector<std::unique_ptr<QueryExpression>> projection,
 										   std::unique_ptr<QueryExpression> filter,
+										   JoinClause join,
 										   OrderingClause order)
 	: table(std::move(table)),
 	  projections(std::move(projection)),
 	  filter(std::move(filter)),
+	  join(std::move(join)),
 	  order(std::move(order)) {
 
 }

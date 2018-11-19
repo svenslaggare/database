@@ -26,6 +26,7 @@ struct QueryOperation {
  * Represents an ordering clause
  */
 struct OrderingClause {
+	bool empty = true;
 	std::string name;
 	bool descending;
 
@@ -40,12 +41,35 @@ struct OrderingClause {
 };
 
 /**
+ * Represents a join clause
+ */
+struct JoinClause {
+	bool empty = true;
+	std::string joinFromColumn;
+	std::string joinOnTable;
+	std::string joinOnColumn;
+
+	JoinClause() = default;
+
+	/**
+	 * Creates a new join clause
+	 * @param joinFromColumn The join column to join from
+	 * @param joinOnTable The table to join on
+	 * @param joinOnColumn The column in the table to join on
+	 */
+	JoinClause(const std::string& joinFromColumn,
+			   const std::string& joinOnTable,
+			   const std::string& joinOnColumn);
+};
+
+/**
  * Represents a select operation
  */
 struct QuerySelectOperation : public QueryOperation {
 	std::string table;
 	std::vector<std::unique_ptr<QueryExpression>> projections;
 	std::unique_ptr<QueryExpression> filter;
+	JoinClause join;
 	OrderingClause order;
 
 	/**
@@ -53,11 +77,13 @@ struct QuerySelectOperation : public QueryOperation {
 	 * @param table The table
 	 * @param projection The projections
 	 * @param filter The filtering
+	 * @param join The join
 	 * @param order The ordering
 	 */
 	QuerySelectOperation(std::string table,
 						 std::vector<std::unique_ptr<QueryExpression>> projection,
 						 std::unique_ptr<QueryExpression> filter = {},
+						 JoinClause join = {},
 						 OrderingClause order = {});
 
 	virtual void accept(QueryOperationVisitor& visitor) override;

@@ -42,17 +42,22 @@ std::size_t ExpressionExecutionEngine::numSlots() const {
 	return mSlottedColumnStorage.size();
 }
 
-std::size_t ExpressionExecutionEngine::getSlot(const std::string& name) {
-	if (mColumnNameToSlot.count(name) == 0) {
-		mColumnNameToSlot[name] = mNextColumnSlot++;
+std::size_t ExpressionExecutionEngine::getSlot(const std::string& table, const std::string& column) {
+	auto fullName = table + "." + column;
+	if (mColumnNameToSlot.count(fullName) == 0) {
+		mColumnNameToSlot[fullName] = {
+			mNextColumnSlot++,
+			table,
+			column
+		};
 	}
 
-	return mColumnNameToSlot[name];
+	return mColumnNameToSlot[fullName].slotIndex;
 }
 
 std::string ExpressionExecutionEngine::fromSlot(std::size_t slot) const {
 	for (auto& current : mColumnNameToSlot) {
-		if (current.second == slot) {
+		if (current.second.slotIndex == slot) {
 			return current.first;
 		}
 	}
@@ -60,10 +65,12 @@ std::string ExpressionExecutionEngine::fromSlot(std::size_t slot) const {
 	return "";
 }
 
-void ExpressionExecutionEngine::fillSlots(VirtualTable& table) {
+void ExpressionExecutionEngine::fillSlots(VirtualTableContainer& tableContainer) {
 	mSlottedColumnStorage.resize(mColumnNameToSlot.size());
 	for (auto& column : mColumnNameToSlot) {
-		mSlottedColumnStorage[column.second] = &table.getColumn(column.first);
+		auto& slotMetadata = column.second;
+		auto& table = tableContainer.getTable(slotMetadata.table);
+		mSlottedColumnStorage[slotMetadata.slotIndex] = &table.getColumn(slotMetadata.column);
 	}
 }
 

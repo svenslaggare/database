@@ -89,7 +89,7 @@ namespace {
 	}
 
 	bool canTreeIndexScan(const TreeIndex& index, const std::string& column, CompareOperator op) {
-		return index.column().name() == column && op != CompareOperator::NotEqual;
+		return index.columnName() == column && op != CompareOperator::NotEqual;
 	}
 }
 

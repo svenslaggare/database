@@ -1,6 +1,7 @@
 #include "virtual_table.h"
 #include "../storage.h"
 #include "../table.h"
+#include "../database_engine.h"
 
 VirtualColumn::VirtualColumn(ColumnStorage* storage)
 	: mStorage(storage) {
@@ -53,5 +54,23 @@ void VirtualTable::setStorage(std::vector<ColumnStorage>& storage) {
 
 	for (std::size_t columnIndex = 0; columnIndex < storage.size(); columnIndex++) {
 		mColumns[mTable.schema().columns()[columnIndex].name()]->setStorage(&storage[columnIndex]);
+	}
+}
+
+
+VirtualTableContainer::VirtualTableContainer(DatabaseEngine& databaseEngine)
+	: mDatabaseEngine(databaseEngine) {
+
+}
+
+VirtualTable& VirtualTableContainer::getTable(const std::string& name) {
+	auto virtualTableIterator = mTables.find(name);
+	if (virtualTableIterator != mTables.end()) {
+		return *virtualTableIterator->second;
+	} else {
+		auto virtualTable = std::make_unique<VirtualTable>(mDatabaseEngine.getTable(name));
+		auto virtualTablePtr = virtualTable.get();
+		mTables[name] = std::move(virtualTable);
+		return *virtualTablePtr;
 	}
 }

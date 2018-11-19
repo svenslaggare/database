@@ -46,7 +46,7 @@ const std::vector<ColumnDefinition>& Schema::columns() const {
 Table::Table(Schema schema)
 	: mSchema(std::move(schema)) {
 	for (auto& indexColumn : mSchema.indices()) {
-		mIndices.push_back(std::make_unique<TreeIndex>(mSchema.getDefinition(indexColumn)));
+		mIndices.push_back(std::make_unique<TreeIndex>(mSchema, mSchema.getDefinition(indexColumn)));
 	}
 
 	for (auto& column : mSchema.columns()) {

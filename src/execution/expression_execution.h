@@ -11,6 +11,15 @@ class ColumnStorage;
 struct ExpressionIR;
 
 /**
+ * The metadata for a column slot
+ */
+struct ColumnSlotData {
+	std::size_t slotIndex;
+	std::string table;
+	std::string column;
+};
+
+/**
  * Represents an execution engine for expression IR
  */
 class ExpressionExecutionEngine {
@@ -18,7 +27,7 @@ public:
 	using EvaluationStack = std::stack<QueryValue, std::vector<QueryValue>>;
 private:
 	std::vector<VirtualColumn*> mSlottedColumnStorage;
-	std::unordered_map<std::string, std::size_t> mColumnNameToSlot;
+	std::unordered_map<std::string, ColumnSlotData> mColumnNameToSlot;
 	std::size_t mNextColumnSlot = 0;
 
 	std::vector<std::unique_ptr<ExpressionIR>> mInstructions;
@@ -47,9 +56,10 @@ public:
 
 	/**
 	 * Returns the slot for the given column
-	 * @param name The name of the column
+	 * @param table The name of the table
+	 * @param column The name of the column
 	 */
-	std::size_t getSlot(const std::string& name);
+	std::size_t getSlot(const std::string& table, const std::string& column);
 
 	/**
 	 * Returns the column of the given slot
@@ -59,9 +69,9 @@ public:
 
 	/**
 	 * Fills the slots
-	 * @param table The table
+	 * @param tableContainer The table container
 	 */
-	void fillSlots(VirtualTable& table);
+	void fillSlots(VirtualTableContainer& tableContainer);
 
 	/**
 	 * Returns the type of the final expression

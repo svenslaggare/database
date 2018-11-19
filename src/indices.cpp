@@ -13,9 +13,13 @@ namespace {
 	}
 }
 
-TreeIndex::TreeIndex(const ColumnDefinition& column)
-	: mColumn(column), mUnderlyingStorage(createTreeIndexStorage(column.type())) {
+TreeIndex::TreeIndex(const Schema& schema, const ColumnDefinition& column)
+	: mSchema(schema), mColumn(column), mUnderlyingStorage(createTreeIndexStorage(column.type())) {
 
+}
+
+std::string TreeIndex::columnName() const {
+	return mSchema.name() + "." + mColumn.name();
 }
 
 const ColumnDefinition& TreeIndex::column() const {

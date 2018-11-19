@@ -9,17 +9,19 @@
 #include <algorithm>
 
 SelectOperationExecutor::SelectOperationExecutor(DatabaseEngine& databaseEngine,
-												 VirtualTable& table,
+												 VirtualTableContainer& tableContainer,
 												 QuerySelectOperation* operation,
 												 std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projectionExecutionEngines,
 												 ExpressionExecutionEngine& filterExecutionEngine,
 												 QueryResult& result)
 	: mDatabaseEngine(databaseEngine),
-	  mTable(table),
+	  mTableContainer(tableContainer),
+	  mTable(tableContainer.getTable(operation->table)),
 	  mOperation(operation),
 	  mProjectionExecutionEngines(projectionExecutionEngines),
 	  mFilterExecutionEngine(filterExecutionEngine),
-	  mResult(result) {
+	  mResult(result),
+	  mReducedProjections(operation->table) {
 	if (databaseEngine.config().optimizeExecution) {
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeNoFilter, this));
 		mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeFilterLeftIsColumn, this));
@@ -229,16 +231,21 @@ bool SelectOperationExecutor::executeDefault() {
 }
 
 void SelectOperationExecutor::execute() {
-	if (!mOperation->order.name.empty()) {
+	if (!mOperation->order.empty) {
 		mOrderResult = true;
 		auto orderRootExpression = std::make_unique<QueryColumnReferenceExpression>(mOperation->order.name);
 		mOrderExecutionEngine = std::make_unique<ExpressionExecutionEngine>(ExecutorHelpers::compile(
-			mTable,
+			mTableContainer,
+			mOperation->table,
 			orderRootExpression.get(),
 			mDatabaseEngine.config()));
 	}
 
-	mReducedProjections.tryReduce(mOperation->projections, mTable);
+	if (!mOperation->join.empty) {
+		auto joinTable = mOperation->join.joinOnTable;
+	}
+
+	mReducedProjections.tryReduce(mOperation->projections, mTableContainer);
 
 	tryExecuteTreeIndexScan();
 

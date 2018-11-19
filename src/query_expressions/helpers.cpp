@@ -25,3 +25,17 @@ CompareOperator QueryExpressionHelpers::otherSideCompareOp(CompareOperator op) {
 			return CompareOperator::LessThanOrEqual;
 	}
 }
+
+std::pair<std::string, std::string> QueryExpressionHelpers::splitColumnName(const std::string& name, const std::string& mainTable) {
+	auto fullName = name;
+	if (fullName.find('.') == std::string::npos) {
+		fullName = mainTable + "." + fullName;
+	}
+
+	auto dotPosition = fullName.find('.');
+	if (dotPosition == std::string::npos) {
+		throw std::runtime_error("Invalid column name.");
+	}
+
+	return std::make_pair(fullName.substr(0, dotPosition), fullName.substr(dotPosition + 1));
+}

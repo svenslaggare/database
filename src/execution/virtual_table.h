@@ -82,3 +82,26 @@ public:
 	 */
 	void setStorage(std::vector<ColumnStorage>& storage);
 };
+
+class DatabaseEngine;
+
+/**
+ * Represents a container of virtual tables
+ */
+class VirtualTableContainer {
+private:
+	DatabaseEngine& mDatabaseEngine;
+	std::unordered_map<std::string, std::unique_ptr<VirtualTable>> mTables;
+public:
+	/**
+	 * Creates a new virtual table container
+	 * @param databaseEngine The database engine
+	 */
+	explicit VirtualTableContainer(DatabaseEngine& databaseEngine);
+
+	/**
+	 * Returns a virtual table for a table with the given name
+	 * @param name The name of the table
+	 */
+	VirtualTable& getTable(const std::string& name);
+};

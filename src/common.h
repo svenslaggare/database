@@ -43,12 +43,10 @@ T handleTypeResult(ColumnType type, std::function<T ()> boolHandle, std::functio
 	switch (type) {
 		case ColumnType::Bool:
 			return boolHandle();
-		case ColumnType::Int32: {
+		case ColumnType::Int32:
 			return int32Handle();
-		}
-		case ColumnType::Float32: {
+		case ColumnType::Float32:
 			return float32Handle();
-		}
 	}
 }
 

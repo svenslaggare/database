@@ -22,11 +22,17 @@ namespace {
 	}
 }
 
-ExpressionExecutionEngine ExecutorHelpers::compile(VirtualTable& table,
+ExpressionExecutionEngine ExecutorHelpers::compile(VirtualTableContainer& tableContainer,
+												   const std::string& mainTable,
 												   QueryExpression* rootExpression,
 												   const DatabaseConfiguration& config) {
 	ExpressionExecutionEngine executionEngine;
-	QueryExpressionCompilerVisitor expressionCompilerVisitor(table, executionEngine, config.optimizeExpressions);
+	QueryExpressionCompilerVisitor expressionCompilerVisitor(
+		tableContainer,
+		mainTable,
+		executionEngine,
+		config.optimizeExpressions);
+
 	expressionCompilerVisitor.compile(rootExpression);
 	return executionEngine;
 }
@@ -128,6 +134,11 @@ void ExecutorHelpers::orderResult(ColumnType orderDataType, const std::vector<Ra
 	}
 }
 
+ReducedProjections::ReducedProjections(const std::string& mainTable)
+	: mainTable(mainTable) {
+
+}
+
 void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections,
 								   std::function<VirtualColumn* (const std::string&)> getColumnStorage) {
 	allReduced = true;
@@ -151,8 +162,13 @@ void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>
 	}
 }
 
-void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, VirtualTable& table) {
-	tryReduce(projections, [&](const std::string& column) { return &table.getColumn(column); });
+void ReducedProjections::tryReduce(std::vector<std::unique_ptr<QueryExpression>>& projections, VirtualTableContainer& tableContainer) {
+	tryReduce(
+		projections,
+		[&](const std::string& column) {
+			auto columnParts = QueryExpressionHelpers::splitColumnName(column, mainTable);
+			return &tableContainer.getTable(columnParts.first).getColumn(columnParts.second);
+		});
 }
 
 std::int64_t ReducedProjections::indexOfColumn(const std::string& name) const {

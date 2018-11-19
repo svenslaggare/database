@@ -10,18 +10,21 @@
  */
 class QueryExpressionCompilerVisitor : public QueryExpressionVisitor {
 private:
-	VirtualTable& mTable;
+	VirtualTableContainer& mTableContainer;
+	VirtualTable& mMainTable;
 	ExpressionExecutionEngine& mExecutionEngine;
 	std::stack<ColumnType> mTypeEvaluationStack;
 	bool mOptimize;
 public:
 	/**
 	 * Creates a new query expression compiler
-	 * @param table The table
+	 * @param tableContainer The table container
+	 * @param mainTable The main table
 	 * @param executionEngine The execution engine
 	 * @param optimize Indicates if optimizations are enabled
 	 */
-	QueryExpressionCompilerVisitor(VirtualTable& table,
+	QueryExpressionCompilerVisitor(VirtualTableContainer& tableContainer,
+								   const std::string& mainTable,
 								   ExpressionExecutionEngine& executionEngine,
 								   bool optimize = true);
 

@@ -21,10 +21,11 @@ void OperationExecutorVisitor::visit(QuerySelectOperation* operation) {
 		filterExpression = std::make_unique<QueryValueExpression>(QueryValue(true));
 	}
 
-	VirtualTable virtualTable(databaseEngine.getTable(operation->table));
+	VirtualTableContainer virtualTableContainer(databaseEngine);
 
 	auto filterExecutionEngine = ExecutorHelpers::compile(
-		virtualTable,
+		virtualTableContainer,
+		operation->table,
 		filterExpression.get(),
 		databaseEngine.config());
 
@@ -32,7 +33,8 @@ void OperationExecutorVisitor::visit(QuerySelectOperation* operation) {
 	for (auto& projection : operation->projections) {
 		projectionExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>(
 			ExecutorHelpers::compile(
-				virtualTable,
+				virtualTableContainer,
+				operation->table,
 				projection.get(),
 				databaseEngine.config())));
 
@@ -41,7 +43,7 @@ void OperationExecutorVisitor::visit(QuerySelectOperation* operation) {
 
 	SelectOperationExecutor executor(
 		databaseEngine,
-		virtualTable,
+		virtualTableContainer,
 		operation,
 		projectionExecutionEngines,
 		filterExecutionEngine,
@@ -79,7 +81,7 @@ void OperationExecutorVisitor::visit(QueryInsertOperation* operation) {
 }
 
 void OperationExecutorVisitor::visit(QueryUpdateOperation* operation) {
-	VirtualTable virtualTable(databaseEngine.getTable(operation->table));
+	VirtualTableContainer virtualTableContainer(databaseEngine);
 
 	std::unique_ptr<QueryExpression> filterExpression;
 	if (operation->filter) {
@@ -89,7 +91,8 @@ void OperationExecutorVisitor::visit(QueryUpdateOperation* operation) {
 	}
 
 	auto filterExecutionEngine = ExecutorHelpers::compile(
-		virtualTable,
+		virtualTableContainer,
+		operation->table,
 		filterExpression.get(),
 		databaseEngine.config());
 
@@ -97,13 +100,14 @@ void OperationExecutorVisitor::visit(QueryUpdateOperation* operation) {
 	for (auto& set : operation->sets) {
 		setExecutionEngines.emplace_back(std::make_unique<ExpressionExecutionEngine>(
 			ExecutorHelpers::compile(
-				virtualTable,
+				virtualTableContainer,
+				operation->table,
 				set.get(),
 				databaseEngine.config())));
 	}
 
 	UpdateOperationExecutor executor(
-		virtualTable,
+		virtualTableContainer.getTable(operation->table),
 		operation,
 		setExecutionEngines,
 		filterExecutionEngine);

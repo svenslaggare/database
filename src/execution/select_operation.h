@@ -13,8 +13,10 @@ struct QueryResult;
 class SelectOperationExecutor {
 private:
 	DatabaseEngine& mDatabaseEngine;
+	VirtualTableContainer& mTableContainer;
 	VirtualTable& mTable;
 	QuerySelectOperation* mOperation;
+
 	std::vector<std::unique_ptr<ExpressionExecutionEngine>>& mProjectionExecutionEngines;
 	ExpressionExecutionEngine& mFilterExecutionEngine;
 	QueryResult& mResult;
@@ -44,14 +46,14 @@ public:
 	/**
 	 * Creates a new select operation executor
 	 * @param databaseEngine The database engine
-	 * @param table The table
+	 * @param tableContainer The table container
 	 * @param operation The operation
 	 * @param projectionExecutionEngines The projection execution engines
 	 * @param filterExecutionEngine The filter execution engine
 	 * @param result The result
 	 */
 	SelectOperationExecutor(DatabaseEngine& databaseEngine,
-							VirtualTable& table,
+							VirtualTableContainer& tableContainer,
 							QuerySelectOperation* operation,
 							std::vector<std::unique_ptr<ExpressionExecutionEngine>>& projectionExecutionEngines,
 							ExpressionExecutionEngine& filterExecutionEngine,
