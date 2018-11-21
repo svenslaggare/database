@@ -41,6 +41,12 @@ public:
 	 */
 	explicit ExpressionExecutionEngine();
 
+	ExpressionExecutionEngine(const ExpressionExecutionEngine&) = delete;
+	ExpressionExecutionEngine& operator=(const ExpressionExecutionEngine&) = delete;
+
+	ExpressionExecutionEngine(ExpressionExecutionEngine&&) = default;
+	ExpressionExecutionEngine& operator=(ExpressionExecutionEngine&&) = default;
+
 	/**
 	 * Returns the storage for the given column
 	 * @param slot The slot of the column

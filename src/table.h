@@ -57,7 +57,7 @@ public:
 	 * @param indices The indices
 	 */
 	Schema(const std::string& name, std::vector<ColumnDefinition> columns, std::vector<std::string> indices);
-
+	
 	/**
 	 * Returns the name of the schema
 	 */

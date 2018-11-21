@@ -23,6 +23,9 @@ public:
 	 */
 	explicit VirtualColumn(ColumnStorage* storage);
 
+	VirtualColumn(const VirtualColumn&) = delete;
+	VirtualColumn& operator=(const VirtualColumn&) = delete;
+
 	/**
 	 * Returns the type of the column
 	 */
@@ -54,6 +57,9 @@ public:
 	 * @param table The backing table
 	 */
 	explicit VirtualTable(Table& table);
+
+	VirtualTable(const VirtualTable&) = delete;
+	VirtualTable& operator=(const VirtualTable&) = delete;
 
 	/**
 	 * Returns the underlying table.
@@ -98,6 +104,9 @@ public:
 	 * @param databaseEngine The database engine
 	 */
 	explicit VirtualTableContainer(DatabaseEngine& databaseEngine);
+
+	VirtualTableContainer(const VirtualTableContainer&) = delete;
+	VirtualTableContainer& operator=(const VirtualTableContainer&) = delete;
 
 	/**
 	 * Returns a virtual table for a table with the given name
