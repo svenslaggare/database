@@ -202,6 +202,11 @@ bool SelectOperationExecutor::executeFilterBothColumn() {
 }
 
 bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
+	// Don't try to use index if we have joined
+	if (mWorkingStorage.empty()) {
+		return false;
+	}
+
 	TreeIndexScanner treeIndexScanner;
 	IndexScanContext context(mTable, mFilterExecutionEngine);
 
