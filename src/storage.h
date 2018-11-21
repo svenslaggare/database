@@ -28,6 +28,12 @@ public:
 	 */
 	explicit ColumnStorage(const ColumnDefinition& column);
 
+	ColumnStorage(const ColumnStorage&) = delete;
+	ColumnStorage& operator=(const ColumnStorage&) = delete;
+
+	ColumnStorage(ColumnStorage&&) = default;
+	ColumnStorage& operator=(ColumnStorage&&) = default;
+
 	/**
 	 * Returns the type of the column
 	 */

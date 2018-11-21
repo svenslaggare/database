@@ -203,7 +203,7 @@ bool SelectOperationExecutor::executeFilterBothColumn() {
 
 bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	// Don't try to use index if we have joined
-	if (mWorkingStorage.empty()) {
+	if (!mWorkingStorage.empty()) {
 		return false;
 	}
 
