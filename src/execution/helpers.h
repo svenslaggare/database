@@ -69,6 +69,16 @@ namespace ExecutorHelpers {
 					 const std::vector<RawQueryValue>& orderingData,
 					 bool descending,
 					 QueryResult& result);
+
+	/**
+	 * Copies the given row from the given table
+	 * @param table The table to copy from
+	 * @param resultsStorage Where to copy to
+	 * @param rowIndex The index of the row to copy
+	 */
+	void copyRow(VirtualTable& table,
+				 std::vector<ColumnStorage>& resultsStorage,
+				 std::size_t rowIndex);
 }
 
 /**
@@ -80,7 +90,7 @@ struct ReducedProjections {
 	std::vector<VirtualColumn*> storage;
 	bool allReduced = false;
 
-	ReducedProjections(const std::string& mainTable);
+	explicit ReducedProjections(const std::string& mainTable);
 
 	/**
 	 * Tries to reduce the given projections

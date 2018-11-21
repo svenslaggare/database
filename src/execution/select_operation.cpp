@@ -32,6 +32,19 @@ SelectOperationExecutor::SelectOperationExecutor(DatabaseEngine& databaseEngine,
 	mExecutors.emplace_back(std::bind(&SelectOperationExecutor::executeDefault, this));
 }
 
+std::vector<ColumnStorage>& SelectOperationExecutor::getWorkingStorage(const std::string& tableName) {
+	auto workingStorageIterator = mWorkingStorage.find(tableName);
+	if (workingStorageIterator != mWorkingStorage.end()) {
+		return *workingStorageIterator->second;
+	}
+
+	auto workingStorage = std::make_unique<std::vector<ColumnStorage>>();
+	auto workingStoragePtr = workingStorage.get();
+	mWorkingStorage[tableName] = std::move(workingStorage);
+	return *workingStoragePtr;
+}
+
+
 bool SelectOperationExecutor::hasReducedToOneInstruction() const {
 	return this->mFilterExecutionEngine.instructions().size() == 1;
 }
@@ -192,12 +205,14 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	TreeIndexScanner treeIndexScanner;
 	IndexScanContext context(mTable, mFilterExecutionEngine);
 
+	auto& workingStorage = getWorkingStorage(mOperation->table);
+
 	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(context);
 	if (!possibleIndexScans.empty()) {
 		auto& indexScan = possibleIndexScans[0];
 		std::cout << "Using index: " << indexScan.index.column().name() << std::endl;
 
-		treeIndexScanner.execute(context, indexScan, mWorkingStorage);
+		treeIndexScanner.execute(context, indexScan, workingStorage);
 		mFilterExecutionEngine.makeCompareAlwaysTrue(indexScan.instructionIndex);
 	} else {
 		return false;
@@ -207,8 +222,54 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	optimizer.optimize();
 
 	// Change storage to the result of the index scan
-	mTable.setStorage(mWorkingStorage);
+	mTable.setStorage(workingStorage);
 	return true;
+}
+
+void SelectOperationExecutor::joinTables() {
+	auto& joinTable = mTableContainer.getTable(mOperation->join.joinOnTable);
+
+	auto createColumnAccessExecution = [&](const std::string& table, const std::string& columnName) {
+		auto accessExpression = std::make_unique<QueryColumnReferenceExpression>(columnName);
+		return ExecutorHelpers::compile(
+			mTableContainer,
+			table,
+			accessExpression.get(),
+			mDatabaseEngine.config());
+	};
+
+	auto createWorkingStorageForTable = [&](VirtualTable& table) -> std::vector<ColumnStorage>& {
+		auto& schema = table.underlying().schema();
+		auto& workingStorage = getWorkingStorage(schema.name());
+		for (auto& column : schema.columns()) {
+			workingStorage.emplace_back(column);
+		}
+
+		return workingStorage;
+	};
+
+	auto joinOnExpressionEngine = createColumnAccessExecution(mOperation->join.joinOnTable, mOperation->join.joinOnColumn);
+	auto& joinOnTableStorage = createWorkingStorageForTable(joinTable);
+
+	auto joinFromExpressionEngine = createColumnAccessExecution(mOperation->table, mOperation->join.joinFromColumn);
+	auto& joinFromTableStorage = createWorkingStorageForTable(mTable);
+
+	for (std::size_t joinOnRowIndex = 0; joinOnRowIndex < joinTable.numRows(); joinOnRowIndex++) {
+		joinOnExpressionEngine.execute(joinOnRowIndex);
+		auto joinOnValue = joinOnExpressionEngine.popEvaluation();
+
+		for (std::size_t joinFromRowIndex = 0; joinFromRowIndex < mTable.numRows(); joinFromRowIndex++) {
+			joinFromExpressionEngine.execute(joinFromRowIndex);
+			auto joinFromValue = joinFromExpressionEngine.popEvaluation();
+			if (joinOnValue == joinFromValue) {
+				ExecutorHelpers::copyRow(mTable, joinFromTableStorage, joinFromRowIndex);
+				ExecutorHelpers::copyRow(joinTable, joinOnTableStorage, joinOnRowIndex);
+			}
+		}
+	}
+
+	mTable.setStorage(joinFromTableStorage);
+	joinTable.setStorage(joinOnTableStorage);
 }
 
 bool SelectOperationExecutor::executeDefault() {
@@ -231,6 +292,10 @@ bool SelectOperationExecutor::executeDefault() {
 }
 
 void SelectOperationExecutor::execute() {
+	if (!mOperation->join.empty) {
+		joinTables();
+	}
+
 	if (!mOperation->order.empty) {
 		mOrderResult = true;
 		auto orderRootExpression = std::make_unique<QueryColumnReferenceExpression>(mOperation->order.name);
@@ -239,10 +304,6 @@ void SelectOperationExecutor::execute() {
 			mOperation->table,
 			orderRootExpression.get(),
 			mDatabaseEngine.config()));
-	}
-
-	if (!mOperation->join.empty) {
-		auto joinTable = mOperation->join.joinOnTable;
 	}
 
 	mReducedProjections.tryReduce(mOperation->projections, mTableContainer);

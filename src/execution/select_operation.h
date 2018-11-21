@@ -25,10 +25,12 @@ private:
 	std::unique_ptr<ExpressionExecutionEngine> mOrderExecutionEngine;
 	std::vector<RawQueryValue> mOrderingData;
 
-	std::vector<ColumnStorage> mWorkingStorage;
+	std::unordered_map<std::string, std::unique_ptr<std::vector<ColumnStorage>>> mWorkingStorage;
 	ReducedProjections mReducedProjections;
 
 	std::vector<std::function<bool ()>> mExecutors;
+
+	std::vector<ColumnStorage>& getWorkingStorage(const std::string& tableName);
 
 	bool hasReducedToOneInstruction() const;
 
@@ -41,6 +43,7 @@ private:
 	bool executeFilterBothColumn();
 
 	bool tryExecuteTreeIndexScan();
+	void joinTables();
 	bool executeDefault();
 public:
 	/**

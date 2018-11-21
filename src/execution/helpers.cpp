@@ -134,6 +134,22 @@ void ExecutorHelpers::orderResult(ColumnType orderDataType, const std::vector<Ra
 	}
 }
 
+void ExecutorHelpers::copyRow(VirtualTable& table, std::vector<ColumnStorage>& resultsStorage, std::size_t rowIndex) {
+	std::size_t columnIndex = 0;
+	for (auto& column : table.underlying().schema().columns()) {
+		auto columnStorage = table.getColumn(column.name()).storage();
+		auto& resultStorage = resultsStorage[columnIndex];
+
+		auto handleForType = [&](auto dummy) {
+			using Type = decltype(dummy);
+			resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
+		};
+
+		handleGenericType(columnStorage->type(), handleForType);
+		columnIndex++;
+	}
+}
+
 ReducedProjections::ReducedProjections(const std::string& mainTable)
 	: mainTable(mainTable) {
 
