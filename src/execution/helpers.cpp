@@ -94,57 +94,60 @@ void ExecutorHelpers::orderResult(const std::vector<ColumnType>& orderingDataTyp
 			sortedIndices.push_back(i);
 		}
 
-		handleGenericType(orderingDataTypes.front(), [&](auto dummy) -> void {
-			using Type = decltype(dummy);
-			std::sort(
-				sortedIndices.begin(),
-				sortedIndices.end(),
-				[&](std::size_t x, std::size_t y) {
-					for (std::size_t columnIndex = 0; columnIndex < orderingDataTypes.size(); columnIndex++) {
-						auto lhs = orderingData[columnIndex][x].getValue<Type>();
-						auto rhs = orderingData[columnIndex][y].getValue<Type>();
+		using SortFuncType = std::function<bool (std::size_t, std::size_t)>;
+		std::unique_ptr<SortFuncType> sortFunc;
 
-						if (ordering[columnIndex].descending) {
-							if (lhs > rhs) {
-								return true;
-							} else if (lhs < rhs) {
-								return false;
-							}
-						} else {
-							if (lhs < rhs) {
-								return true;
-							} else if (lhs > rhs) {
-								return false;
-							}
+		sortFunc = std::make_unique<SortFuncType>([&](std::size_t x, std::size_t y) -> bool {
+			for (std::size_t columnIndex = 0; columnIndex < orderingDataTypes.size(); columnIndex++) {
+				auto compareResult = handleGenericTypeResult(int, orderingDataTypes[columnIndex], [&](auto dummy) {
+					using Type = decltype(dummy);
+					auto lhs = orderingData[columnIndex][x].getValue<Type>();
+					auto rhs = orderingData[columnIndex][y].getValue<Type>();
+
+					if (ordering[columnIndex].descending) {
+						if (lhs > rhs) {
+							return 1;
+						} else if (lhs < rhs) {
+							return 0;
+						}
+					} else {
+						if (lhs < rhs) {
+							return 1;
+						} else if (lhs > rhs) {
+							return 0;
 						}
 					}
 
-					return false;
+					return -1;
 				});
+
+				if (compareResult >= 0) {
+					return (bool)compareResult;
+				}
+			}
+
+			return false;
 		});
 
+		if (ordering.size() == 1) {
+			handleGenericType(orderingDataTypes.front(), [&](auto dummy) -> void {
+				using Type = decltype(dummy);
+				if (ordering.front().descending) {
+					sortFunc = std::make_unique<SortFuncType>([&](std::size_t x, std::size_t y) -> bool {
+						return orderingData[0][x].getValue<Type>() > orderingData[0][y].getValue<Type>();
+					});
+				} else {
+					sortFunc = std::make_unique<SortFuncType>([&](std::size_t x, std::size_t y) -> bool {
+						return orderingData[0][x].getValue<Type>() < orderingData[0][y].getValue<Type>();
+					});
+				}
+			});
+		}
 
-//		if (ordering.front().descending) {
-//			handleGenericType(orderingDataTypes.front(), [&](auto dummy) -> void {
-//				using Type = decltype(dummy);
-//				std::sort(
-//					sortedIndices.begin(),
-//					sortedIndices.end(),
-//					[&](std::size_t x, std::size_t y) {
-//						return orderingData[0][x].getValue<Type>() > orderingData[0][y].getValue<Type>();
-//					});
-//			});
-//		} else {
-//			handleGenericType(orderingDataTypes.front(), [&](auto dummy) -> void {
-//				using Type = decltype(dummy);
-//				std::sort(
-//					sortedIndices.begin(),
-//					sortedIndices.end(),
-//					[&](std::size_t x, std::size_t y) {
-//						return orderingData[0][x].getValue<Type>() < orderingData[0][y].getValue<Type>();
-//					});
-//			});
-//		}
+		std::sort(
+			sortedIndices.begin(),
+			sortedIndices.end(),
+			*sortFunc);
 	}
 
 	// Now update the result
