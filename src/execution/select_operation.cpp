@@ -73,7 +73,11 @@ bool SelectOperationExecutor::executeNoFilter() {
 				if (reducedIndex != -1 || !mOrderResult) {
 					std::size_t columnIndex = 0;
 					for (auto& column : this->mReducedProjections.columns) {
-						auto& columnDefinition = this->mTable.underlying().schema().getDefinition(column);
+						auto columnParts = QueryExpressionHelpers::splitColumnName(column, mOperation->table);
+						auto& columnDefinition = this->mTableContainer
+							.getTable(columnParts.first).underlying()
+							.getColumn(columnParts.second);
+
 						auto& resultStorage = this->mResult.columns[columnIndex];
 
 						auto handleForType = [&](auto dummy) {

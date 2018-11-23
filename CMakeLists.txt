@@ -97,6 +97,8 @@ if(CXXTEST_FOUND)
     add_test_case_default_name(update_simple.h)
 
     add_test_case_default_name(join.h)
+    add_test_case_with_defines(tests-join-optimize-expression join.h OPTIMIZE_EXPRESSIONS)
+    add_test_case_with_defines(tests-join-optimize-full join.h OPTIMIZE_FULL)
 
     add_test_case_default_name(order.h)
     add_test_case_with_defines(tests-order-optimize-expression order.h OPTIMIZE_EXPRESSIONS)

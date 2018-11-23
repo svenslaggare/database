@@ -120,7 +120,8 @@ struct QueryValue {
 	 */
 	template<typename T>
 	T getValue() const {
-		if (type != ColumnTypeHelpers::getType<T>()) {
+		auto inputType = ColumnTypeHelpers::getType<T>();
+		if (type != inputType) {
 			throw std::runtime_error("Wrong type.");
 		}
 
