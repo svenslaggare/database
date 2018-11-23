@@ -4,7 +4,7 @@
 #include "virtual_table.h"
 
 ExpressionExecutionEngine::ExpressionExecutionEngine()
-	: mExpressionType(ColumnType::Int32) {
+	: mExpressionTypes({ ColumnType::Int32 }) {
 
 }
 
@@ -75,11 +75,19 @@ void ExpressionExecutionEngine::fillSlots(VirtualTableContainer& tableContainer)
 }
 
 ColumnType ExpressionExecutionEngine::expressionType() const {
-	return mExpressionType;
+	return mExpressionTypes[0];
 }
 
-void ExpressionExecutionEngine::setExpressionType(ColumnType type) {
-	mExpressionType = type;
+const std::vector<ColumnType>& ExpressionExecutionEngine::expressionTypes() const {
+	return mExpressionTypes;
+}
+
+void ExpressionExecutionEngine::setExpressionTypes(const std::vector<ColumnType>& types) {
+	mExpressionTypes = types;
+}
+
+std::size_t ExpressionExecutionEngine::evaluationStackSize() const {
+	return mEvaluationStack.size();
 }
 
 void ExpressionExecutionEngine::execute(std::size_t rowIndex) {
@@ -89,7 +97,6 @@ void ExpressionExecutionEngine::execute(std::size_t rowIndex) {
 		instruction->execute(*this);
 	}
 }
-
 
 QueryValueExpressionIR::QueryValueExpressionIR(QueryValue value)
 	: value(value) {

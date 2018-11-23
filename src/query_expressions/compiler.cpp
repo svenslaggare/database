@@ -9,11 +9,13 @@ namespace {
 QueryExpressionCompilerVisitor::QueryExpressionCompilerVisitor(VirtualTableContainer& tableContainer,
 															   const std::string& mainTable,
 															   ExpressionExecutionEngine& executionEngine,
-															   bool optimize)
+															   bool optimize,
+															   std::size_t numReturnValues)
 	: mTableContainer(tableContainer),
 	  mMainTable(tableContainer.getTable(mainTable)),
 	  mExecutionEngine(executionEngine),
-	  mOptimize(optimize) {
+	  mOptimize(optimize),
+	  mNumReturnValues(numReturnValues) {
 
 }
 
@@ -26,15 +28,32 @@ void QueryExpressionCompilerVisitor::compile(QueryExpression* rootExpression) {
 
 	mExecutionEngine.fillSlots(mTableContainer);
 
-	if (mTypeEvaluationStack.size() != 1) {
-		throw std::runtime_error("Expected one value on the stack.");
+	if (mTypeEvaluationStack.size() != mNumReturnValues) {
+		throw std::runtime_error(
+			"Expected " + std::to_string(mNumReturnValues)
+			+ " value(s) on the stack, but got "
+			+ std::to_string(mTypeEvaluationStack.size()) + ".");
 	}
 
-	mExecutionEngine.setExpressionType(mTypeEvaluationStack.top());
+	auto copyTypeEvaluationStack = mTypeEvaluationStack;
+	std::vector<ColumnType> expressionTypes;
+	while (!copyTypeEvaluationStack.empty()) {
+		expressionTypes.push_back(copyTypeEvaluationStack.top());
+		copyTypeEvaluationStack.pop();
+	}
+
+	mExecutionEngine.setExpressionTypes(expressionTypes);
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryRootExpression* expression) {
 	expression->root->accept(*this, expression);
+}
+
+void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryMultipleExpressions* expression) {
+	for (auto it = expression->expressions.rbegin(); it != expression->expressions.rend(); ++it) {
+		auto& subExpression = *it;
+		subExpression->accept(*this, expression);
+	}
 }
 
 void QueryExpressionCompilerVisitor::visit(QueryExpression* parent, QueryColumnReferenceExpression* expression) {

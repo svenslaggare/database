@@ -25,13 +25,15 @@ namespace {
 ExpressionExecutionEngine ExecutorHelpers::compile(VirtualTableContainer& tableContainer,
 												   const std::string& mainTable,
 												   QueryExpression* rootExpression,
-												   const DatabaseConfiguration& config) {
+												   const DatabaseConfiguration& config,
+												   std::size_t numReturnValues) {
 	ExpressionExecutionEngine executionEngine;
 	QueryExpressionCompilerVisitor expressionCompilerVisitor(
 		tableContainer,
 		mainTable,
 		executionEngine,
-		config.optimizeExpressions);
+		config.optimizeExpressions,
+		numReturnValues);
 
 	expressionCompilerVisitor.compile(rootExpression);
 	return executionEngine;
@@ -80,36 +82,69 @@ void ExecutorHelpers::addRowToResult(std::vector<std::unique_ptr<ExpressionExecu
 	}
 }
 
-void ExecutorHelpers::orderResult(ColumnType orderDataType, const std::vector<RawQueryValue>& orderingData, bool descending, QueryResult& result) {
+void ExecutorHelpers::orderResult(const std::vector<ColumnType>& orderingDataTypes,
+								  const std::vector<OrderingColumn>& ordering,
+							   	  const std::vector<std::vector<RawQueryValue>>& orderingData,
+							   	  QueryResult& result) {
 	// Find the indices of the ordering
 	std::vector<std::size_t> sortedIndices;
 	{
 		Timing timing("sort: ");
-		for (std::size_t i = 0; i < orderingData.size(); i++) {
+		for (std::size_t i = 0; i < orderingData[0].size(); i++) {
 			sortedIndices.push_back(i);
 		}
 
-		if (descending) {
-			handleGenericType(orderDataType, [&](auto dummy) -> void {
-				using Type = decltype(dummy);
-				std::sort(
-					sortedIndices.begin(),
-					sortedIndices.end(),
-					[&](std::size_t x, std::size_t y) {
-						return orderingData[x].getValue<Type>() > orderingData[y].getValue<Type>();
-					});
-			});
-		} else {
-			handleGenericType(orderDataType, [&](auto dummy) -> void {
-				using Type = decltype(dummy);
-				std::sort(
-					sortedIndices.begin(),
-					sortedIndices.end(),
-					[&](std::size_t x, std::size_t y) {
-						return orderingData[x].getValue<Type>() < orderingData[y].getValue<Type>();
-					});
-			});
-		}
+		handleGenericType(orderingDataTypes.front(), [&](auto dummy) -> void {
+			using Type = decltype(dummy);
+			std::sort(
+				sortedIndices.begin(),
+				sortedIndices.end(),
+				[&](std::size_t x, std::size_t y) {
+					for (std::size_t columnIndex = 0; columnIndex < orderingDataTypes.size(); columnIndex++) {
+						auto lhs = orderingData[columnIndex][x].getValue<Type>();
+						auto rhs = orderingData[columnIndex][y].getValue<Type>();
+
+						if (ordering[columnIndex].descending) {
+							if (lhs > rhs) {
+								return true;
+							} else if (lhs < rhs) {
+								return false;
+							}
+						} else {
+							if (lhs < rhs) {
+								return true;
+							} else if (lhs > rhs) {
+								return false;
+							}
+						}
+					}
+
+					return false;
+				});
+		});
+
+
+//		if (ordering.front().descending) {
+//			handleGenericType(orderingDataTypes.front(), [&](auto dummy) -> void {
+//				using Type = decltype(dummy);
+//				std::sort(
+//					sortedIndices.begin(),
+//					sortedIndices.end(),
+//					[&](std::size_t x, std::size_t y) {
+//						return orderingData[0][x].getValue<Type>() > orderingData[0][y].getValue<Type>();
+//					});
+//			});
+//		} else {
+//			handleGenericType(orderingDataTypes.front(), [&](auto dummy) -> void {
+//				using Type = decltype(dummy);
+//				std::sort(
+//					sortedIndices.begin(),
+//					sortedIndices.end(),
+//					[&](std::size_t x, std::size_t y) {
+//						return orderingData[0][x].getValue<Type>() < orderingData[0][y].getValue<Type>();
+//					});
+//			});
+//		}
 	}
 
 	// Now update the result

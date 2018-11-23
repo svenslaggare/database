@@ -23,14 +23,25 @@ struct QueryOperation {
 };
 
 /**
+ * Represents a column for an ordering
+ */
+struct OrderingColumn {
+	std::string name;
+	bool descending;
+};
+
+/**
  * Represents an ordering clause
  */
 struct OrderingClause {
-	bool empty = true;
-	std::string name;
-	bool descending;
+	std::vector<OrderingColumn> columns;
 
 	OrderingClause() = default;
+
+	/**
+	 * Indicates if the ordering is empty
+	 */
+	bool empty() const;
 
 	/**
 	 * Creates a new ordering clause
@@ -38,6 +49,12 @@ struct OrderingClause {
 	 * @param descending Indicates if the ordering is descending
 	 */
 	explicit OrderingClause(const std::string& name, bool descending = false);
+
+	/**
+	 * Creates a new ordering clause
+	 * @param columns The columns to order by
+	 */
+	explicit OrderingClause(std::vector<OrderingColumn> columns);
 };
 
 /**

@@ -19,6 +19,25 @@ void QueryRootExpression::update(QueryExpression* oldExpression, std::unique_ptr
 	throw std::runtime_error("old expression is not expression.");
 }
 
+QueryMultipleExpressions::QueryMultipleExpressions(std::vector<std::unique_ptr<QueryExpression>> expressions)
+	: expressions(std::move(expressions)) {
+
+}
+
+void QueryMultipleExpressions::accept(QueryExpressionVisitor& visitor, QueryExpression* parent) {
+	visitor.visit(parent, this);
+}
+
+void QueryMultipleExpressions::update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) {
+	for (auto& expression : expressions) {
+		if (expression.get() == oldExpression) {
+			expression = std::move(newExpression);
+		}
+	}
+
+	throw std::runtime_error("old expression not sub-expression.");
+}
+
 QueryColumnReferenceExpression::QueryColumnReferenceExpression(const std::string& name)
 	: name(name) {
 

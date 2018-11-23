@@ -15,6 +15,7 @@ private:
 	ExpressionExecutionEngine& mExecutionEngine;
 	std::stack<ColumnType> mTypeEvaluationStack;
 	bool mOptimize;
+	std::size_t mNumReturnValues;
 public:
 	/**
 	 * Creates a new query expression compiler
@@ -22,11 +23,13 @@ public:
 	 * @param mainTable The main table
 	 * @param executionEngine The execution engine
 	 * @param optimize Indicates if optimizations are enabled
+	 * @param numReturnValues The number of return values
 	 */
 	QueryExpressionCompilerVisitor(VirtualTableContainer& tableContainer,
 								   const std::string& mainTable,
 								   ExpressionExecutionEngine& executionEngine,
-								   bool optimize = true);
+								   bool optimize,
+								   std::size_t numReturnValues);
 
 	/**
 	 * Compiles the given expression
@@ -35,6 +38,7 @@ public:
 	void compile(QueryExpression* rootExpression);
 
 	virtual void visit(QueryExpression* parent, QueryRootExpression* expression) override;
+	virtual void visit(QueryExpression* parent, QueryMultipleExpressions* expression) override;
 	virtual void visit(QueryExpression* parent, QueryColumnReferenceExpression* expression) override;
 	virtual void visit(QueryExpression* parent, QueryValueExpression* expression) override;
 	virtual void visit(QueryExpression* parent, QueryAndExpression* expression) override;

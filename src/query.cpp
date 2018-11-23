@@ -1,8 +1,17 @@
 #include "query.h"
 #include "execution/operation_visitor.h"
 
-OrderingClause::OrderingClause(const std::string& name, bool ascending)
-	: empty(false), name(name), descending(ascending) {
+bool OrderingClause::empty() const {
+	return columns.empty();
+}
+
+OrderingClause::OrderingClause(std::vector<OrderingColumn> columns)
+	: columns(std::move(columns)) {
+
+}
+
+OrderingClause::OrderingClause(const std::string& name, bool descending)
+	: columns({ OrderingColumn { name, descending } }) {
 
 }
 

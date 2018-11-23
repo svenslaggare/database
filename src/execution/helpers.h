@@ -4,6 +4,7 @@
 #include <memory>
 #include "../common.h"
 #include "../database_engine.h"
+#include "../query.h"
 
 class ColumnStorage;
 struct QueryResult;
@@ -22,11 +23,13 @@ namespace ExecutorHelpers {
 	 * @param mainTable The main table
 	 * @param rootExpression The root expression
 	 * @param config The database configuration
+	 * @param numReturnValues The number of return values
 	 */
 	ExpressionExecutionEngine compile(VirtualTableContainer& tableContainer,
 									  const std::string& mainTable,
 									  QueryExpression* rootExpression,
-									  const DatabaseConfiguration& config);
+									  const DatabaseConfiguration& config,
+									  std::size_t numReturnValues = 1);
 
 	/**
 	 * Applies the given function to each row with filtering
@@ -60,14 +63,14 @@ namespace ExecutorHelpers {
 
 	/**
 	 * Orders the given result
-	 * @param orderDataType The type of ordering column
+	 * @param orderingDataTypes The types of the ordering
+	 * @param ordering The ordering
 	 * @param orderingData The ordering data
-	 * @param descending Indicates if sorted descending
 	 * @param result The result to order
 	 */
-	void orderResult(ColumnType orderDataType,
-					 const std::vector<RawQueryValue>& orderingData,
-					 bool descending,
+	void orderResult(const std::vector<ColumnType>& orderingDataTypes,
+					 const std::vector<OrderingColumn>& ordering,
+					 const std::vector<std::vector<RawQueryValue>>& orderingData,
 					 QueryResult& result);
 
 	/**

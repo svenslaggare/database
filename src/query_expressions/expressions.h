@@ -44,6 +44,22 @@ struct QueryRootExpression : public QueryExpression {
 };
 
 /**
+ * Represents an expressions that contains many
+ */
+struct QueryMultipleExpressions : public QueryExpression {
+	std::vector<std::unique_ptr<QueryExpression>> expressions;
+
+	/**
+	 * Creates a new list of expressions
+	 * @param expressions The expressions
+	 */
+	explicit QueryMultipleExpressions(std::vector<std::unique_ptr<QueryExpression>> expressions);
+
+	virtual void accept(QueryExpressionVisitor& visitor, QueryExpression* parent) override;
+	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) override;
+};
+
+/**
  * Represents a query expression for a column reference
  */
 struct QueryColumnReferenceExpression : public QueryExpression {

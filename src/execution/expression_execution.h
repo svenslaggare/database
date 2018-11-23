@@ -31,7 +31,7 @@ private:
 	std::size_t mNextColumnSlot = 0;
 
 	std::vector<std::unique_ptr<ExpressionIR>> mInstructions;
-	ColumnType mExpressionType;
+	std::vector<ColumnType> mExpressionTypes;
 
 	std::size_t mCurrentRowIndex = 0;
 	EvaluationStack mEvaluationStack;
@@ -85,9 +85,15 @@ public:
 	ColumnType expressionType() const;
 
 	/**
-	 * Sets the expression type
+	 * Returns all the return types.
 	 */
-	void setExpressionType(ColumnType type);
+	const std::vector<ColumnType>& expressionTypes() const;
+
+	/**
+	 * Sets the expression types
+	 * @param types The list of types
+	 */
+	void setExpressionTypes(const std::vector<ColumnType>& types);
 
 	/**
 	 * Returns the current row index
@@ -122,6 +128,8 @@ public:
 	inline void pushEvaluation(const QueryValue& value) {
 		mEvaluationStack.push(value);
 	}
+
+	std::size_t evaluationStackSize() const;
 
 	/**
 	 * Adds the given instruction

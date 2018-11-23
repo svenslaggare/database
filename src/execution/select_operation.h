@@ -23,7 +23,7 @@ private:
 
 	bool mOrderResult = false;
 	std::unique_ptr<ExpressionExecutionEngine> mOrderExecutionEngine;
-	std::vector<RawQueryValue> mOrderingData;
+	std::vector<std::vector<RawQueryValue>> mOrderingData;
 
 	std::unordered_map<std::string, std::unique_ptr<std::vector<ColumnStorage>>> mWorkingStorage;
 	ReducedProjections mReducedProjections;

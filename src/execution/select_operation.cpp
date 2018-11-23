@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <assert.h>
 
 SelectOperationExecutor::SelectOperationExecutor(DatabaseEngine& databaseEngine,
 												 VirtualTableContainer& tableContainer,
@@ -51,7 +52,11 @@ bool SelectOperationExecutor::hasReducedToOneInstruction() const {
 
 void SelectOperationExecutor::addForOrdering(std::size_t rowIndex) {
 	mOrderExecutionEngine->execute(rowIndex);
-	mOrderingData.push_back(mOrderExecutionEngine->popEvaluation().data);
+	for (auto& columnOrdering : mOrderingData) {
+		columnOrdering.push_back(mOrderExecutionEngine->popEvaluation().data);
+	}
+
+	assert(mOrderExecutionEngine->evaluationStackSize() == 0);
 }
 
 bool SelectOperationExecutor::executeNoFilter() {
@@ -60,7 +65,11 @@ bool SelectOperationExecutor::executeNoFilter() {
 		if (auto instruction = dynamic_cast<QueryValueExpressionIR*>(firstInstruction)) {
 			auto value = instruction->value.getValue<bool>();
 			if (value) {
-				auto reducedIndex = this->mReducedProjections.indexOfColumn(this->mOperation->order.name);
+				std::int64_t reducedIndex = -1;
+				if (this->mOperation->order.columns.size() == 1) {
+					reducedIndex = this->mReducedProjections.indexOfColumn(this->mOperation->order.columns.front().name);
+				}
+
 				if (reducedIndex != -1 || !mOrderResult) {
 					std::size_t columnIndex = 0;
 					for (auto& column : this->mReducedProjections.columns) {
@@ -76,7 +85,7 @@ bool SelectOperationExecutor::executeNoFilter() {
 							if (mOrderResult) {
 								if ((std::size_t)reducedIndex == columnIndex) {
 									for (auto currentValue : resultStorage.getUnderlyingStorage<Type>()) {
-										mOrderingData.push_back(QueryValue(currentValue).data);
+										mOrderingData[0].push_back(QueryValue(currentValue).data);
 									}
 								}
 							}
@@ -301,14 +310,23 @@ void SelectOperationExecutor::execute() {
 		joinTables();
 	}
 
-	if (!mOperation->order.empty) {
+	if (!mOperation->order.empty()) {
 		mOrderResult = true;
-		auto orderRootExpression = std::make_unique<QueryColumnReferenceExpression>(mOperation->order.name);
+		std::vector<std::unique_ptr<QueryExpression>> orderExpressions;
+		for (auto& column : mOperation->order.columns) {
+			orderExpressions.emplace_back(std::make_unique<QueryColumnReferenceExpression>(column.name));
+			mOrderingData.emplace_back();
+		}
+
+		auto numReturnValues = orderExpressions.size();
+		auto orderRootExpression = std::make_unique<QueryMultipleExpressions>(std::move(orderExpressions));
+
 		mOrderExecutionEngine = std::make_unique<ExpressionExecutionEngine>(ExecutorHelpers::compile(
 			mTableContainer,
 			mOperation->table,
 			orderRootExpression.get(),
-			mDatabaseEngine.config()));
+			mDatabaseEngine.config(),
+			numReturnValues));
 	}
 
 	mReducedProjections.tryReduce(mOperation->projections, mTableContainer);
@@ -329,9 +347,9 @@ void SelectOperationExecutor::execute() {
 
 	if (mOrderResult) {
 		ExecutorHelpers::orderResult(
-			mOrderExecutionEngine->expressionType(),
+			mOrderExecutionEngine->expressionTypes(),
+			mOperation->order.columns,
 			mOrderingData,
-			mOperation->order.descending,
 			mResult);
 	}
 }

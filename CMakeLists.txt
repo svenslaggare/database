@@ -91,7 +91,14 @@ if(CXXTEST_FOUND)
     add_test_case_default_name(select_simple.h)
     add_test_case_with_defines(tests-select-simple-optimize-expression select_simple.h OPTIMIZE_EXPRESSIONS)
     add_test_case_with_defines(tests-select-simple-optimize-full select_simple.h OPTIMIZE_FULL)
+
     add_test_case_default_name(select_index.h)
+
     add_test_case_default_name(update_simple.h)
+
     add_test_case_default_name(join.h)
+
+    add_test_case_default_name(order.h)
+    add_test_case_with_defines(tests-order-optimize-expression order.h OPTIMIZE_EXPRESSIONS)
+    add_test_case_with_defines(tests-order-optimize-full order.h OPTIMIZE_FULL)
 endif()
