@@ -47,6 +47,7 @@ private:
 
 	bool tryExecuteTreeIndexScan();
 	void joinTables();
+	void prepareOrdering();
 	bool executeDefault();
 public:
 	/**

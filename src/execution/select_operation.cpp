@@ -350,6 +350,25 @@ void SelectOperationExecutor::joinTables() {
 	joinTable.setStorage(joinOnTableStorage);
 }
 
+void SelectOperationExecutor::prepareOrdering() {
+	mOrderResult = true;
+	std::vector<std::unique_ptr<QueryExpression>> orderExpressions;
+	for (auto& column : mOperation->order.columns) {
+		orderExpressions.emplace_back(std::make_unique<QueryColumnReferenceExpression>(column.name));
+		mOrderingData.emplace_back();
+	}
+
+	auto numReturnValues = orderExpressions.size();
+	auto orderRootExpression = std::make_unique<QueryMultipleExpressions>(std::move(orderExpressions));
+
+	mOrderExecutionEngine = std::make_unique<ExpressionExecutionEngine>(ExecutorHelpers::compile(
+		mTableContainer,
+		mOperation->table,
+		orderRootExpression.get(),
+		mDatabaseEngine.config(),
+		numReturnValues));
+}
+
 bool SelectOperationExecutor::executeDefault() {
 	ExecutorHelpers::forEachRowFiltered(
 		mTable,
@@ -375,22 +394,7 @@ void SelectOperationExecutor::execute() {
 	}
 
 	if (!mOperation->order.empty()) {
-		mOrderResult = true;
-		std::vector<std::unique_ptr<QueryExpression>> orderExpressions;
-		for (auto& column : mOperation->order.columns) {
-			orderExpressions.emplace_back(std::make_unique<QueryColumnReferenceExpression>(column.name));
-			mOrderingData.emplace_back();
-		}
-
-		auto numReturnValues = orderExpressions.size();
-		auto orderRootExpression = std::make_unique<QueryMultipleExpressions>(std::move(orderExpressions));
-
-		mOrderExecutionEngine = std::make_unique<ExpressionExecutionEngine>(ExecutorHelpers::compile(
-			mTableContainer,
-			mOperation->table,
-			orderRootExpression.get(),
-			mDatabaseEngine.config(),
-			numReturnValues));
+		prepareOrdering();
 	}
 
 	mReducedProjections.tryReduce(mOperation->projections, mTableContainer);
