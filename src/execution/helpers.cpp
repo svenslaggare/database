@@ -7,20 +7,7 @@
 #include "../helpers.h"
 
 #include <algorithm>
-
-namespace {
-	inline void addColumnToResult(std::vector<VirtualColumn*> columnsStorage, QueryResult& result, std::size_t rowIndex, std::size_t columnIndex) {
-		auto& columnStorage = *columnsStorage[columnIndex]->storage();
-		auto& resultStorage = result.columns[columnIndex];
-
-		auto handleForType = [&](auto dummy) {
-			using Type = decltype(dummy);
-			resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage.getUnderlyingStorage<Type>()[rowIndex]);
-		};
-
-		handleGenericType(columnStorage.type(), handleForType);
-	}
-}
+#include <iostream>
 
 ExpressionExecutionEngine ExecutorHelpers::compile(VirtualTableContainer& tableContainer,
 												   const std::string& mainTable,
@@ -50,9 +37,23 @@ void ExecutorHelpers::forEachRowFiltered(VirtualTable& table,
 	}
 }
 
+void ExecutorHelpers::addColumnToResult(const ColumnStorage& storage,
+										ColumnStorage& resultStorage,
+										std::size_t rowIndex) {
+	auto handleForType = [&](auto dummy) {
+		using Type = decltype(dummy);
+		resultStorage.getUnderlyingStorage<Type>().push_back(storage.getUnderlyingStorage<Type>()[rowIndex]);
+	};
+
+	handleGenericType(storage.type(), handleForType);
+}
+
 void ExecutorHelpers::addRowToResult(std::vector<VirtualColumn*> columnsStorage, QueryResult& result, std::size_t rowIndex) {
 	for (std::size_t columnIndex = 0; columnIndex < columnsStorage.size(); columnIndex++) {
-		addColumnToResult(columnsStorage, result, rowIndex, columnIndex);
+		ExecutorHelpers::addColumnToResult(
+			*columnsStorage[columnIndex]->storage(),
+			result.columns[columnIndex],
+			rowIndex);
 	}
 }
 
@@ -75,7 +76,10 @@ void ExecutorHelpers::addRowToResult(std::vector<std::unique_ptr<ExpressionExecu
 
 			handleGenericType(resultValue.type, handleForType);
 		} else {
-			addColumnToResult(reducedProjections.storage, result, rowIndex, projectionIndex);
+			ExecutorHelpers::addColumnToResult(
+				*reducedProjections.storage[projectionIndex]->storage(),
+				result.columns[projectionIndex],
+				rowIndex);
 		}
 
 		projectionIndex++;
@@ -175,15 +179,10 @@ void ExecutorHelpers::orderResult(const std::vector<ColumnType>& orderingDataTyp
 void ExecutorHelpers::copyRow(VirtualTable& table, std::vector<ColumnStorage>& resultsStorage, std::size_t rowIndex) {
 	std::size_t columnIndex = 0;
 	for (auto& column : table.underlying().schema().columns()) {
-		auto columnStorage = table.getColumn(column.name()).storage();
-		auto& resultStorage = resultsStorage[columnIndex];
-
-		auto handleForType = [&](auto dummy) {
-			using Type = decltype(dummy);
-			resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
-		};
-
-		handleGenericType(columnStorage->type(), handleForType);
+		addColumnToResult(
+			*table.getColumn(column.name()).storage(),
+			resultsStorage[columnIndex],
+			rowIndex);
 		columnIndex++;
 	}
 }

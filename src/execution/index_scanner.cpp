@@ -3,6 +3,7 @@
 #include "index_scanner.h"
 #include "../indices.h"
 #include "expression_execution.h"
+#include "helpers.h"
 
 PossibleIndexScan::PossibleIndexScan(std::size_t instructionIndex,
 									 TreeIndex& index,
@@ -161,14 +162,7 @@ void TreeIndexScanner::execute(VirtualTable& table,
 			resultsStorage.emplace_back(columnDefinition);
 		},
 		[&](std::size_t rowIndex, std::size_t columnIndex, const ColumnStorage* columnStorage, bool isFirstColumn) {
-			auto& resultStorage = resultsStorage[columnIndex];
-
-			auto handleForType = [&](auto dummy) {
-				using Type = decltype(dummy);
-				resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
-			};
-
-			handleGenericType(columnStorage->type(), handleForType);
+			ExecutorHelpers::addColumnToResult(*columnStorage, resultsStorage[columnIndex], rowIndex);
 		});
 }
 

@@ -306,14 +306,7 @@ void SelectOperationExecutor::joinTables() {
 				indexScan,
 				[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {},
 				[&](std::size_t rowIndex, std::size_t columnIndex, const ColumnStorage* columnStorage, bool isFirstColumn) {
-					auto& resultStorage = indexStorage[columnIndex];
-
-					auto handleForType = [&](auto dummy) {
-						using Type = decltype(dummy);
-						resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
-					};
-
-					handleGenericType(columnStorage->type(), handleForType);
+					ExecutorHelpers::addColumnToResult(*columnStorage, indexStorage[columnIndex], rowIndex);
 
 					if (isFirstColumn) {
 						ExecutorHelpers::copyRow(nonIndexTable, nonIndexStorage, nonIndexRowIndex);
@@ -346,7 +339,7 @@ void SelectOperationExecutor::joinTables() {
 			for (std::size_t joinFromRowIndex = 0; joinFromRowIndex < mTable.numRows(); joinFromRowIndex++) {
 				joinFromExpressionEngine.execute(joinFromRowIndex);
 				auto joinFromValue = joinFromExpressionEngine.popEvaluation();
-				
+
 				if (joinOnValue == joinFromValue) {
 					ExecutorHelpers::copyRow(mTable, joinFromTableStorage, joinFromRowIndex);
 					ExecutorHelpers::copyRow(joinTable, joinOnTableStorage, joinOnRowIndex);

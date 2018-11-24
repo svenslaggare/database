@@ -42,6 +42,16 @@ namespace ExecutorHelpers {
 							std::function<void (std::size_t)> applyRow);
 
 	/**
+	 * Adds the given column to the results
+	 * @param storage The storage of the column
+	 * @param resultStorage The result storage
+	 * @param rowIndex The row to add
+	 */
+	void addColumnToResult(const ColumnStorage& storage,
+						   ColumnStorage& resultStorage,
+						   std::size_t rowIndex);
+
+	/**
 	 * Adds given row to the result
 	 * @param columnsStorage The storage of the columns
 	 * @param result The result
