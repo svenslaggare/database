@@ -233,6 +233,46 @@ public:
 		TS_ASSERT_EQUALS(result.columns[0].size(), 0);
 	}
 
+	void testSimpleIndexing12() {
+		std::vector<std::vector<QueryValue>> tableData;
+		auto databaseEngine = setupTest(tableData, optimizeExpressionsTestConfig(), { "x" });
+		auto query = createQuery(std::make_unique<QuerySelectOperation>(
+			"test_table",
+			QueryExpressionHelpers::createColumnReferences({ "x" }),
+			std::make_unique<QueryCompareExpression>(
+				createColumn("x"),
+				createValue(QueryValue(10000)),
+				CompareOperator::LessThanOrEqual)
+		));
+
+		QueryResult result;
+		databaseEngine->execute(query, result);
+		TS_ASSERT_EQUALS(result.columns.size(), 1);
+		TS_ASSERT_EQUALS(result.columns[0].size(), 1000);
+
+		for (std::size_t i = 0; i < result.columns[0].size(); i++) {
+			ASSERT_EQUALS_DB_ENTRY(result.columns[0].getValue(i), tableData[i][0], i, 0);
+		}
+	}
+
+	void testSimpleIndexing13() {
+		std::vector<std::vector<QueryValue>> tableData;
+		auto databaseEngine = setupTest(tableData, optimizeExpressionsTestConfig(), { "x" });
+		auto query = createQuery(std::make_unique<QuerySelectOperation>(
+			"test_table",
+			QueryExpressionHelpers::createColumnReferences({ "x" }),
+			std::make_unique<QueryCompareExpression>(
+				createColumn("x"),
+				createValue(QueryValue(-1)),
+				CompareOperator::LessThanOrEqual)
+		));
+
+		QueryResult result;
+		databaseEngine->execute(query, result);
+		TS_ASSERT_EQUALS(result.columns.size(), 1);
+		TS_ASSERT_EQUALS(result.columns[0].size(), 0);
+	}
+
 	void testIndexNonPrimary() {
 		std::vector<std::vector<QueryValue>> tableData;
 		auto databaseEngine = setupTest(tableData, optimizeExpressionsTestConfig(), { "z" });

@@ -304,9 +304,7 @@ void SelectOperationExecutor::joinTables() {
 			treeIndexScanner.execute(
 				indexTable,
 				indexScan,
-				[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {
-
-				},
+				[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {},
 				[&](std::size_t rowIndex, std::size_t columnIndex, const ColumnStorage* columnStorage, bool isFirstColumn) {
 					auto& resultStorage = indexStorage[columnIndex];
 
@@ -348,6 +346,7 @@ void SelectOperationExecutor::joinTables() {
 			for (std::size_t joinFromRowIndex = 0; joinFromRowIndex < mTable.numRows(); joinFromRowIndex++) {
 				joinFromExpressionEngine.execute(joinFromRowIndex);
 				auto joinFromValue = joinFromExpressionEngine.popEvaluation();
+				
 				if (joinOnValue == joinFromValue) {
 					ExecutorHelpers::copyRow(mTable, joinFromTableStorage, joinFromRowIndex);
 					ExecutorHelpers::copyRow(joinTable, joinOnTableStorage, joinOnRowIndex);

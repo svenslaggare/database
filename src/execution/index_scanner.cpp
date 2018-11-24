@@ -49,11 +49,6 @@ namespace {
 			case CompareOperator::LessThanOrEqual:
 				startIterator = underlyingIndex.begin();
 				endIterator = underlyingIndex.upper_bound(indexSearchValue);
-
-				if (endIterator == underlyingIndex.end()) {
-					startIterator = underlyingIndex.end();
-					endIterator = underlyingIndex.end();
-				}
 				break;
 			case CompareOperator::GreaterThan:
 				startIterator = underlyingIndex.upper_bound(indexSearchValue);
