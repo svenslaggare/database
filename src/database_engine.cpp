@@ -24,8 +24,5 @@ Table& DatabaseEngine::getTable(const std::string& name) const {
 
 void DatabaseEngine::execute(const Query& query, QueryResult& result) {
 	OperationExecutorVisitor operationExecutor(*this, result);
-
-	for (auto& op : query.operations) {
-		op->accept(operationExecutor);
-	}
+	query.operation->accept(operationExecutor);
 }

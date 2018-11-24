@@ -2,7 +2,7 @@
 #include "operation_visitor.h"
 #include "../query_expressions/compiler.h"
 
-struct DatabaseEngine;
+class DatabaseEngine;
 
 /**
  * Represents a operations executor visitor

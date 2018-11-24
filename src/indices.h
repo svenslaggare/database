@@ -54,25 +54,6 @@ public:
 	}
 
 	/**
-	 * Finds the row index for the given value
-	 * @tparam T The type of the value
-	 * @param value The value
-	 * @param rowIndex Sets to found row index
-	 * @return True if found else false
-	 */
-	template<typename T>
-	bool findRowIndex(const T& value, std::size_t& rowIndex) const {
-		auto& underlyingIndex = getUnderlyingStorage<T>();
-		auto rowIndexIterator = underlyingIndex.find(value);
-		if (rowIndexIterator != underlyingIndex.end()) {
-			rowIndex = rowIndexIterator->second;
-			return true;
-		}
-
-		return false;
-	}
-
-	/**
 	 * Inserts an index entry for the given value
 	 * @tparam T The type of the value
 	 * @param value The value

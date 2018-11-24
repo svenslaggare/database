@@ -152,13 +152,13 @@ struct QueryUpdateOperation : public QueryOperation {
  * Represents a database query
  */
 struct Query {
-	std::vector<std::unique_ptr<QueryOperation>> operations;
+	std::unique_ptr<QueryOperation> operation;
 
 	/**
 	 * Creates a new query
-	 * @param operations The operations
+	 * @param operation The operation
 	 */
-	explicit Query(std::vector<std::unique_ptr<QueryOperation>> operations);
+	explicit Query(std::unique_ptr<QueryOperation> operation);
 };
 
 /**
@@ -180,5 +180,17 @@ struct QueryResult {
 		}
 
 		return column.getUnderlyingStorage<T>();
+	}
+
+	/**
+	 * Returns the value of the given element
+	 * @tparam T The type of the data
+	 * @param rowIndex The row of the element
+	 * @param columnIndex The column of the element
+	 */
+	template<typename T>
+	const T& getValue(std::size_t rowIndex, std::size_t columnIndex) {
+		auto& columnStorage = getColumn<T>(columnIndex);
+		return columnStorage[rowIndex];
 	}
 };

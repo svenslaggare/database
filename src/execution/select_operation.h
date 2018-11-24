@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 #include "helpers.h"
+#include "index_scanner.h"
 
 struct ExpressionExecutionEngine;
 struct QuerySelectOperation;
@@ -16,6 +17,8 @@ private:
 	VirtualTableContainer& mTableContainer;
 	VirtualTable& mTable;
 	QuerySelectOperation* mOperation;
+
+	TreeIndexScanner mTreeIndexScanner;
 
 	std::vector<std::unique_ptr<ExpressionExecutionEngine>>& mProjectionExecutionEngines;
 	ExpressionExecutionEngine& mFilterExecutionEngine;

@@ -61,7 +61,7 @@ void QueryUpdateOperation::accept(QueryOperationVisitor& visitor) {
 	visitor.visit(this);
 }
 
-Query::Query(std::vector<std::unique_ptr<QueryOperation>> operations)
-	: operations(std::move(operations)) {
+Query::Query(std::unique_ptr<QueryOperation> operation)
+	: operation(std::move(operation)) {
 
 }

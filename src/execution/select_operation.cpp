@@ -220,16 +220,15 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 		return false;
 	}
 
-	TreeIndexScanner treeIndexScanner;
 
 	auto& workingStorage = getWorkingStorage(mOperation->table);
 
-	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(mTable, mFilterExecutionEngine);
+	auto possibleIndexScans = mTreeIndexScanner.findPossibleIndexScans(mTable, mFilterExecutionEngine);
 	if (!possibleIndexScans.empty()) {
 		auto& indexScan = possibleIndexScans[0];
 		std::cout << "Using index: " << indexScan.index.column().name() << std::endl;
 
-		treeIndexScanner.execute(mTable, indexScan, workingStorage);
+		mTreeIndexScanner.execute(mTable, indexScan, workingStorage);
 		mFilterExecutionEngine.makeCompareAlwaysTrue(indexScan.instructionIndex);
 	} else {
 		return false;
@@ -300,8 +299,7 @@ void SelectOperationExecutor::joinTables() {
 			auto joinValue = nonIndexExecutionEngine.popEvaluation();
 
 			PossibleIndexScan indexScan(0, index, CompareOperator::Equal, joinValue);
-			TreeIndexScanner treeIndexScanner;
-			treeIndexScanner.execute(
+			mTreeIndexScanner.execute(
 				indexTable,
 				indexScan,
 				[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {},

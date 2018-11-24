@@ -8,9 +8,7 @@
 #define ASSERT_EQUALS_DB_ENTRY(x,y,r,c) TS_ASSERT_EQUALS_WITH_MESSAGE(x, y, ("At row " + std::to_string(r) + ", col " + std::to_string(c)).c_str())
 
 Query createQuery(std::unique_ptr<QueryOperation> operation) {
-	std::vector<std::unique_ptr<QueryOperation>> operations;
-	operations.push_back(std::move(operation));
-	return Query(std::move(operations));
+	return Query(std::move(operation));
 }
 
 DatabaseConfiguration defaultTestConfig() {
