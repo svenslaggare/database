@@ -73,4 +73,11 @@ namespace QueryExpressionHelpers {
 	 * @param mainTable The main table to use if no table exists
 	 */
 	std::pair<std::string, std::string> splitColumnName(const std::string& name, const std::string& mainTable = "");
+
+	/**
+	 * Returns the full column name
+	 * @param table The table
+	 * @param column The column
+	 */
+	std::string fullColumnName(const std::string& table, const std::string& column);
 }

@@ -19,14 +19,13 @@ UpdateOperationExecutor::UpdateOperationExecutor(VirtualTable& table,
 
 bool UpdateOperationExecutor::tryExecuteTreeIndexScan() {
 	TreeIndexScanner treeIndexScanner;
-	IndexScanContext context(mTable, mFilterExecutionEngine);
 
-	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(context);
+	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(mTable, mFilterExecutionEngine);
 	if (!possibleIndexScans.empty()) {
 		auto& indexScan = possibleIndexScans[0];
 		std::cout << "Using index: " << indexScan.index.column().name() << std::endl;
 
-		treeIndexScanner.execute(context, indexScan, mWorkingStorage, mWorkingRowIndexStorage);
+		treeIndexScanner.execute(mTable, indexScan, mWorkingStorage, mWorkingRowIndexStorage);
 		mFilterExecutionEngine.makeCompareAlwaysTrue(indexScan.instructionIndex);
 	} else {
 		return false;

@@ -33,63 +33,50 @@ struct PossibleIndexScan {
 };
 
 /**
- * Represents the context for an index scan
- */
-struct IndexScanContext {
-	VirtualTable& table;
-	ExpressionExecutionEngine& executionEngine;
-
-	/**
-	 * Creates a new context
-	 * @param table The table
-	 * @param executionEngine The execution engine
-	 */
-	IndexScanContext(VirtualTable& table, ExpressionExecutionEngine& executionEngine);
-};
-
-/**
  * Represents a tree index scanner
  */
 class TreeIndexScanner {
 public:
 	/**
 	 * Finds the possible index scans
-	 * @param context The scan context
+	 * @param table The table to scan for
+	 * @param executionEngine The execution engine to find for
 	 */
-	std::vector<PossibleIndexScan> findPossibleIndexScans(IndexScanContext& context);
+	std::vector<PossibleIndexScan> findPossibleIndexScans(const VirtualTable& table,
+														  const ExpressionExecutionEngine& executionEngine);
 
 	using OnColumnDefined = std::function<void (std::size_t, const ColumnDefinition&)>;
 	using ApplyRow = std::function<void (std::size_t, std::size_t, ColumnStorage*, bool)>;
 
 	/**
 	 * Executes the given index scan
-	 * @param context The scan context
+	 * @param table The table
 	 * @param indexScan The scan to execute
 	 * @param applyRow Called on each row with (rowIndex, columnIndex, columnStorage)
 	 */
-	void execute(IndexScanContext& context,
+	void execute(VirtualTable& table,
 				 const PossibleIndexScan& indexScan,
 				 OnColumnDefined onColumnDef,
 				 ApplyRow applyRow);
 
 	/**
 	 * Executes the given index scan and copies the results
-	 * @param context The scan context
+	 * @param table The table
 	 * @param indexScan The scan to execute
 	 * @param resultsStorage Where to store the result
 	 */
-	void execute(IndexScanContext& context,
+	void execute(VirtualTable& table,
 				 const PossibleIndexScan& indexScan,
 				 std::vector<ColumnStorage>& resultsStorage);
 
 	/**
 	 * Executes the given index scan and copies the results
-	 * @param context The scan context
+	 * @param table The table
 	 * @param indexScan The scan to execute
 	 * @param resultsStorage Where to store the result
 	 * @param resultRowIndices Saves which real row each result row corresponds to
 	 */
-	void execute(IndexScanContext& context,
+	void execute(VirtualTable& table,
 				 const PossibleIndexScan& indexScan,
 				 std::vector<ColumnStorage>& resultsStorage,
 				 std::vector<std::size_t>& resultRowIndices);

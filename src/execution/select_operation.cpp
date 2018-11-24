@@ -221,16 +221,15 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 	}
 
 	TreeIndexScanner treeIndexScanner;
-	IndexScanContext context(mTable, mFilterExecutionEngine);
 
 	auto& workingStorage = getWorkingStorage(mOperation->table);
 
-	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(context);
+	auto possibleIndexScans = treeIndexScanner.findPossibleIndexScans(mTable, mFilterExecutionEngine);
 	if (!possibleIndexScans.empty()) {
 		auto& indexScan = possibleIndexScans[0];
 		std::cout << "Using index: " << indexScan.index.column().name() << std::endl;
 
-		treeIndexScanner.execute(context, indexScan, workingStorage);
+		treeIndexScanner.execute(mTable, indexScan, workingStorage);
 		mFilterExecutionEngine.makeCompareAlwaysTrue(indexScan.instructionIndex);
 	} else {
 		return false;
@@ -272,16 +271,87 @@ void SelectOperationExecutor::joinTables() {
 	auto joinFromExpressionEngine = createColumnAccessExecution(mOperation->table, mOperation->join.joinFromColumn);
 	auto& joinFromTableStorage = createWorkingStorageForTable(mTable);
 
-	for (std::size_t joinOnRowIndex = 0; joinOnRowIndex < joinTable.numRows(); joinOnRowIndex++) {
-		joinOnExpressionEngine.execute(joinOnRowIndex);
-		auto joinOnValue = joinOnExpressionEngine.popEvaluation();
+	auto findJoinIndex = [&](VirtualTable& table, const std::string& columnName) {
+		auto fullColumnName = QueryExpressionHelpers::fullColumnName(
+			table.underlying().schema().name(),
+			columnName);
+		TreeIndex* joinIndex = nullptr;
 
-		for (std::size_t joinFromRowIndex = 0; joinFromRowIndex < mTable.numRows(); joinFromRowIndex++) {
-			joinFromExpressionEngine.execute(joinFromRowIndex);
-			auto joinFromValue = joinFromExpressionEngine.popEvaluation();
-			if (joinOnValue == joinFromValue) {
-				ExecutorHelpers::copyRow(mTable, joinFromTableStorage, joinFromRowIndex);
-				ExecutorHelpers::copyRow(joinTable, joinOnTableStorage, joinOnRowIndex);
+		for (auto& index : table.underlying().indices()) {
+			if (index->columnName() == fullColumnName) {
+				joinIndex = index.get();
+			}
+		}
+
+		return joinIndex;
+	};
+
+	auto joinFromIndex = findJoinIndex(mTable, mOperation->join.joinFromColumn);
+	auto joinOnIndex = findJoinIndex(joinTable, mOperation->join.joinOnColumn);
+
+	auto indexJoin = [&](VirtualTable& nonIndexTable,
+					     ExpressionExecutionEngine& nonIndexExecutionEngine,
+					     std::vector<ColumnStorage>& nonIndexStorage,
+					     VirtualTable& indexTable,
+					     TreeIndex& index,
+					     std::vector<ColumnStorage>& indexStorage) {
+		for (std::size_t nonIndexRowIndex = 0; nonIndexRowIndex < nonIndexTable.numRows(); nonIndexRowIndex++) {
+			nonIndexExecutionEngine.execute(nonIndexRowIndex);
+			auto joinValue = nonIndexExecutionEngine.popEvaluation();
+
+			PossibleIndexScan indexScan(0, index, CompareOperator::Equal, joinValue);
+			TreeIndexScanner treeIndexScanner;
+			treeIndexScanner.execute(
+				indexTable,
+				indexScan,
+				[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {
+
+				},
+				[&](std::size_t rowIndex, std::size_t columnIndex, const ColumnStorage* columnStorage, bool isFirstColumn) {
+					auto& resultStorage = indexStorage[columnIndex];
+
+					auto handleForType = [&](auto dummy) {
+						using Type = decltype(dummy);
+						resultStorage.getUnderlyingStorage<Type>().push_back(columnStorage->getUnderlyingStorage<Type>()[rowIndex]);
+					};
+
+					handleGenericType(columnStorage->type(), handleForType);
+
+					if (isFirstColumn) {
+						ExecutorHelpers::copyRow(nonIndexTable, nonIndexStorage, nonIndexRowIndex);
+					}
+				});
+		}
+	};
+
+	if (joinFromIndex != nullptr) {
+		indexJoin(
+			joinTable,
+			joinOnExpressionEngine,
+			joinOnTableStorage,
+			mTable,
+			*joinFromIndex,
+			joinFromTableStorage);
+	} else if (joinOnIndex != nullptr) {
+		indexJoin(
+			mTable,
+			joinFromExpressionEngine,
+			joinFromTableStorage,
+			joinTable,
+			*joinOnIndex,
+			joinOnTableStorage);
+	} else {
+		for (std::size_t joinOnRowIndex = 0; joinOnRowIndex < joinTable.numRows(); joinOnRowIndex++) {
+			joinOnExpressionEngine.execute(joinOnRowIndex);
+			auto joinOnValue = joinOnExpressionEngine.popEvaluation();
+
+			for (std::size_t joinFromRowIndex = 0; joinFromRowIndex < mTable.numRows(); joinFromRowIndex++) {
+				joinFromExpressionEngine.execute(joinFromRowIndex);
+				auto joinFromValue = joinFromExpressionEngine.popEvaluation();
+				if (joinOnValue == joinFromValue) {
+					ExecutorHelpers::copyRow(mTable, joinFromTableStorage, joinFromRowIndex);
+					ExecutorHelpers::copyRow(joinTable, joinOnTableStorage, joinOnRowIndex);
+				}
 			}
 		}
 	}

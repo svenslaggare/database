@@ -39,3 +39,10 @@ std::pair<std::string, std::string> QueryExpressionHelpers::splitColumnName(cons
 
 	return std::make_pair(fullName.substr(0, dotPosition), fullName.substr(dotPosition + 1));
 }
+
+std::string QueryExpressionHelpers::fullColumnName(const std::string& table, const std::string& column) {
+	auto parts = QueryExpressionHelpers::splitColumnName(
+		column,
+		table);
+	return parts.first + "." + parts.second;
+}

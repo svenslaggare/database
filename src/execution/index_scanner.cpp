@@ -15,11 +15,6 @@ PossibleIndexScan::PossibleIndexScan(std::size_t instructionIndex,
 
 }
 
-IndexScanContext::IndexScanContext(VirtualTable& table, ExpressionExecutionEngine& executionEngine)
-	: table(table), executionEngine(executionEngine) {
-
-}
-
 namespace {
 	template<typename T>
 	using TreeIndexIterator = typename TreeIndex::UnderlyingStorage<T>::const_iterator;
@@ -39,7 +34,7 @@ namespace {
 				startIterator = underlyingIndex.lower_bound(indexSearchValue);
 				endIterator = underlyingIndex.upper_bound(indexSearchValue);
 
-				if (endIterator == underlyingIndex.end()) {
+				if (startIterator == underlyingIndex.end()) {
 					startIterator = underlyingIndex.end();
 					endIterator = underlyingIndex.end();
 				}
@@ -49,11 +44,6 @@ namespace {
 			case CompareOperator::LessThan: {
 				startIterator = underlyingIndex.begin();
 				endIterator = underlyingIndex.lower_bound(indexSearchValue);
-
-				if (endIterator == underlyingIndex.end()) {
-					startIterator = underlyingIndex.end();
-					endIterator = underlyingIndex.end();
-				}
 				break;
 			}
 			case CompareOperator::LessThanOrEqual:
@@ -68,11 +58,6 @@ namespace {
 			case CompareOperator::GreaterThan:
 				startIterator = underlyingIndex.upper_bound(indexSearchValue);
 				endIterator = underlyingIndex.end();
-
-				if (startIterator == underlyingIndex.end()) {
-					startIterator = underlyingIndex.end();
-					endIterator = underlyingIndex.end();
-				}
 				break;
 			case CompareOperator::GreaterThanOrEqual:
 				startIterator = underlyingIndex.lower_bound(indexSearchValue);
@@ -93,15 +78,16 @@ namespace {
 	}
 }
 
-std::vector<PossibleIndexScan> TreeIndexScanner::findPossibleIndexScans(IndexScanContext& context) {
+std::vector<PossibleIndexScan> TreeIndexScanner::findPossibleIndexScans(const VirtualTable& table,
+																		const ExpressionExecutionEngine& executionEngine) {
 	std::vector<PossibleIndexScan> possibleScans;
 
-	for (std::size_t instructionIndex = 0; instructionIndex < context.executionEngine.instructions().size(); instructionIndex++) {
-		auto instruction = context.executionEngine.instructions()[instructionIndex].get();
+	for (std::size_t instructionIndex = 0; instructionIndex < executionEngine.instructions().size(); instructionIndex++) {
+		auto instruction = executionEngine.instructions()[instructionIndex].get();
 
 		auto tryAddIndexScan = [&](std::size_t columnSlot, CompareOperator op, QueryValue indexSearchValue) {
-			for (auto& index : context.table.underlying().indices()) {
-				if (canTreeIndexScan(*index, context.executionEngine.fromSlot(columnSlot), op)) {
+			for (auto& index : table.underlying().indices()) {
+				if (canTreeIndexScan(*index, executionEngine.fromSlot(columnSlot), op)) {
 					possibleScans.emplace_back(instructionIndex, *index, op, indexSearchValue);
 				}
 			}
@@ -135,7 +121,7 @@ std::vector<PossibleIndexScan> TreeIndexScanner::findPossibleIndexScans(IndexSca
 	return possibleScans;
 }
 
-void TreeIndexScanner::execute(IndexScanContext& context,
+void TreeIndexScanner::execute(VirtualTable& table,
 							   const PossibleIndexScan& indexScan,
 							   OnColumnDefined onColumnDef,
 							   ApplyRow applyRow) {
@@ -144,9 +130,9 @@ void TreeIndexScanner::execute(IndexScanContext& context,
 
 		std::vector<ColumnStorage*> columnsStorage;
 		std::size_t columnIndex = 0;
-		for (auto& column : context.table.underlying().schema().columns()) {
+		for (auto& column : table.underlying().schema().columns()) {
 			onColumnDef(columnIndex, column);
-			columnsStorage.push_back(context.table.getColumn(column.name()).storage());
+			columnsStorage.push_back(table.getColumn(column.name()).storage());
 			columnIndex++;
 		}
 
@@ -170,17 +156,16 @@ void TreeIndexScanner::execute(IndexScanContext& context,
 	handleGenericType(indexScan.indexSearchValue.type, handleForType);
 }
 
-void TreeIndexScanner::execute(IndexScanContext& context,
+void TreeIndexScanner::execute(VirtualTable& table,
 							   const PossibleIndexScan& indexScan,
 							   std::vector<ColumnStorage>& resultsStorage) {
 	execute(
-		context,
+		table,
 		indexScan,
 		[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {
 			resultsStorage.emplace_back(columnDefinition);
 		},
 		[&](std::size_t rowIndex, std::size_t columnIndex, const ColumnStorage* columnStorage, bool isFirstColumn) {
-			// Copy matched rows
 			auto& resultStorage = resultsStorage[columnIndex];
 
 			auto handleForType = [&](auto dummy) {
@@ -192,12 +177,12 @@ void TreeIndexScanner::execute(IndexScanContext& context,
 		});
 }
 
-void TreeIndexScanner::execute(IndexScanContext& context,
+void TreeIndexScanner::execute(VirtualTable& table,
 							   const PossibleIndexScan& indexScan,
 							   std::vector<ColumnStorage>& resultsStorage,
 							   std::vector<std::size_t>& resultRowIndices) {
 	execute(
-		context,
+		table,
 		indexScan,
 		[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {
 			resultsStorage.emplace_back(columnDefinition);
@@ -208,7 +193,6 @@ void TreeIndexScanner::execute(IndexScanContext& context,
 				resultRowIndices.push_back(rowIndex);
 			}
 
-			// Copy matched rows
 			auto& resultStorage = resultsStorage[columnIndex];
 
 			auto handleForType = [&](auto dummy) {
