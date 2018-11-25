@@ -11,7 +11,7 @@ class ColumnStorage;
 struct ExpressionIR;
 
 /**
- * The metadata for a column slot
+ * Contains metadata for a column slot
  */
 struct ColumnSlotData {
 	std::size_t slotIndex;
