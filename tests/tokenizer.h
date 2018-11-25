@@ -51,7 +51,35 @@ public:
 		auto tokens = Tokenizer::tokenize(">");
 		TS_ASSERT_EQUALS(tokens.size(), 1);
 		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Operator);
-		TS_ASSERT_EQUALS(tokens[0].charValue(), '>');
+		TS_ASSERT_EQUALS(tokens[0].operatorValue(), '>');
+	}
+
+	void testOperator2() {
+		auto tokens = Tokenizer::tokenize(">=");
+		TS_ASSERT_EQUALS(tokens.size(), 1);
+		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Operator);
+		TS_ASSERT_EQUALS(tokens[0].operatorValue(), OperatorChar('>', '='));
+	}
+
+	void testOperator3() {
+		auto tokens = Tokenizer::tokenize("!=");
+		TS_ASSERT_EQUALS(tokens.size(), 1);
+		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Operator);
+		TS_ASSERT_EQUALS(tokens[0].operatorValue(), OperatorChar('!', '='));
+	}
+
+	void testOperator4() {
+		auto tokens = Tokenizer::tokenize("<=");
+		TS_ASSERT_EQUALS(tokens.size(), 1);
+		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Operator);
+		TS_ASSERT_EQUALS(tokens[0].operatorValue(), OperatorChar('<', '='));
+	}
+
+	void testOperator5() {
+		auto tokens = Tokenizer::tokenize("==");
+		TS_ASSERT_EQUALS(tokens.size(), 1);
+		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Operator);
+		TS_ASSERT_EQUALS(tokens[0].operatorValue(), OperatorChar('=', '='));
 	}
 
 	void testIdentifier1() {
@@ -94,6 +122,10 @@ public:
 		TS_ASSERT_EQUALS(tokens.size(), 1);
 		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Where);
 
+		tokens = Tokenizer::tokenize("inner");
+		TS_ASSERT_EQUALS(tokens.size(), 1);
+		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Inner);
+
 		tokens = Tokenizer::tokenize("join");
 		TS_ASSERT_EQUALS(tokens.size(), 1);
 		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Join);
@@ -130,7 +162,6 @@ public:
 
 	void testComplex1() {
 		auto tokens = Tokenizer::tokenize("SELECT x FROM test_table");
-		auto haha = Token("x");
 		TS_ASSERT_EQUALS(tokens.size(), 4);
 		TS_ASSERT_EQUALS(tokens[0], Token(TokenType::Select));
 		TS_ASSERT_EQUALS(tokens[1], Token("x"));
@@ -147,7 +178,7 @@ public:
 		TS_ASSERT_EQUALS(tokens[3], Token("test_table"));
 		TS_ASSERT_EQUALS(tokens[4], Token(TokenType::Where));
 		TS_ASSERT_EQUALS(tokens[5], Token("x"));
-		TS_ASSERT_EQUALS(tokens[6], Token(TokenType::Operator, '>'));
+		TS_ASSERT_EQUALS(tokens[6], Token(TokenType::Operator, OperatorChar('>')));
 		TS_ASSERT_EQUALS(tokens[7], Token(5));
 	}
 
@@ -162,5 +193,31 @@ public:
 		TS_ASSERT_EQUALS(tokens[5], Token("z"));
 		TS_ASSERT_EQUALS(tokens[6], Token(TokenType::From));
 		TS_ASSERT_EQUALS(tokens[7], Token("test_table"));
+	}
+
+	void testComplex4() {
+		auto tokens = Tokenizer::tokenize("SELECT test_table.x FROM test_table WHERE x >= 5");
+		TS_ASSERT_EQUALS(tokens.size(), 8);
+		TS_ASSERT_EQUALS(tokens[0], Token(TokenType::Select));
+		TS_ASSERT_EQUALS(tokens[1], Token("test_table.x"));
+		TS_ASSERT_EQUALS(tokens[2], Token(TokenType::From));
+		TS_ASSERT_EQUALS(tokens[3], Token("test_table"));
+		TS_ASSERT_EQUALS(tokens[4], Token(TokenType::Where));
+		TS_ASSERT_EQUALS(tokens[5], Token("x"));
+		TS_ASSERT_EQUALS(tokens[6], Token(TokenType::Operator, OperatorChar('>', '=')));
+		TS_ASSERT_EQUALS(tokens[7], Token(5));
+	}
+
+	void testComplex5() {
+		auto tokens = Tokenizer::tokenize("SELECT test_table.x FROM test_table WHERE x != 5");
+		TS_ASSERT_EQUALS(tokens.size(), 8);
+		TS_ASSERT_EQUALS(tokens[0], Token(TokenType::Select));
+		TS_ASSERT_EQUALS(tokens[1], Token("test_table.x"));
+		TS_ASSERT_EQUALS(tokens[2], Token(TokenType::From));
+		TS_ASSERT_EQUALS(tokens[3], Token("test_table"));
+		TS_ASSERT_EQUALS(tokens[4], Token(TokenType::Where));
+		TS_ASSERT_EQUALS(tokens[5], Token("x"));
+		TS_ASSERT_EQUALS(tokens[6], Token(TokenType::Operator, OperatorChar('!', '=')));
+		TS_ASSERT_EQUALS(tokens[7], Token(5));
 	}
 };

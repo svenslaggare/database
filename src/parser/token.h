@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include "operator.h"
 
 /**
  * The token types
@@ -39,7 +40,7 @@ private:
 	bool mBoolValue = false;
 	std::int32_t mInt32Value = 0;
 	float mFloat32Value = 0.0f;
-	char mCharValue = '\0';
+	OperatorChar mOperator;
 	std::string mIdentifier;
 public:
 	/**
@@ -66,11 +67,11 @@ public:
 	Token(float value);
 
 	/**
-	 * Creates a new char token
+	 * Creates a new operator token
 	 * @param type The type
-	 * @param value The character
+	 * @param op The operator
 	 */
-	Token(TokenType type, char value);
+	Token(TokenType type, OperatorChar op);
 
 	/**
 	 * Creates a new identifier token
@@ -80,6 +81,7 @@ public:
 
 	/**
 	 * Creates an bool token
+	 * @param type The type
 	 * @param value The value
 	 */
 	explicit Token(TokenType type, bool value);
@@ -107,7 +109,7 @@ public:
 	/**
 	 * Returns the value if operator token
 	 */
-	char charValue() const;
+	OperatorChar operatorValue() const;
 
 	/**
 	 * Returns the identifier

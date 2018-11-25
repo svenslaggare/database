@@ -29,9 +29,8 @@ Token::Token(float value)
 
 }
 
-Token::Token(TokenType type, char value)
-	: mType(type),
-	  mCharValue(value) {
+Token::Token(TokenType type, OperatorChar op)
+	: mType(type), mOperator(op) {
 
 }
 
@@ -57,8 +56,8 @@ float Token::float32Value() const {
 	return mFloat32Value;
 }
 
-char Token::charValue() const {
-	return mCharValue;
+OperatorChar Token::operatorValue() const {
+	return mOperator;
 }
 
 std::string Token::identifier() const {
@@ -82,7 +81,7 @@ bool Token::operator==(const Token& rhs) const {
 		return false;
 	}
 
-	if (mCharValue != rhs.mCharValue) {
+	if (mOperator != rhs.mOperator) {
 		return false;
 	}
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "token.h"
 #include "../query.h"
+#include "operator.h"
 
 #include <vector>
 #include <memory>
@@ -28,7 +29,7 @@ private:
 	std::vector<Token> mTokens;
 	Token mCurrentToken;
 	int mTokenIndex;
-	std::unordered_map<char, int> mOperators;
+	std::unordered_map<OperatorChar, int> mOperators;
 
 	/**
 	 * Signals that a parse error has occurred

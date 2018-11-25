@@ -51,7 +51,7 @@ set(SOURCE_FILES
     src/parser/token.h
     src/parser/token.cpp
     src/parser/parser.h
-    src/parser/parser.cpp)
+    src/parser/parser.cpp src/parser/operator.cpp src/parser/operator.h)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)
 
@@ -110,4 +110,6 @@ if(CXXTEST_FOUND)
 
     add_test_case_default_name(tokenizer.h)
     add_test_case_default_name(parser.h)
+
+    add_test_case_default_name(integration.h)
 endif()

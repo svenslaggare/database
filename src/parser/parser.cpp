@@ -150,7 +150,17 @@ std::vector<Token> Tokenizer::tokenize(std::string str) {
 		}
 
 		//Operator
-		tokens.emplace_back(TokenType::Operator, current);
+		if (!tokens.empty()
+			&& tokens.back().type() == TokenType::Operator
+			&& (tokens.back().operatorValue().op1() == '>'
+		    	|| tokens.back().operatorValue().op1() == '<'
+				|| tokens.back().operatorValue().op1() == '!'
+				|| tokens.back().operatorValue().op1() == '=')) {
+			//If the previous token is an operator and the current one also is, upgrade to a two-op char
+			tokens.back() = Token(TokenType::Operator, OperatorChar(tokens.back().operatorValue().op1(), current));
+		} else {
+			tokens.emplace_back(TokenType::Operator, OperatorChar(current));
+		}
 	}
 
 	return tokens;
@@ -159,15 +169,19 @@ std::vector<Token> Tokenizer::tokenize(std::string str) {
 QueryParser::QueryParser(std::vector<Token> tokens)
 	:  mTokens(std::move(tokens)), mTokenIndex(-1) {
 	mOperators = {
-		{ '*', 7 },
-		{ '/', 7 },
-		{ '+', 6 },
-		{ '-', 6 },
-		{ '>', 5 },
-		{ '<', 5 },
+		{ OperatorChar('*'), 7 },
+		{ OperatorChar('/'), 7 },
+		{ OperatorChar('+'), 6 },
+		{ OperatorChar('-'), 6 },
+		{ OperatorChar('>'), 5 },
+		{ OperatorChar('<'), 5 },
+		{ OperatorChar('<', '='), 5 },
+		{ OperatorChar('>', '='), 5 },
+		{ OperatorChar('=', '='), 5 },
+		{ OperatorChar('!', '='), 5 },
 	};
 
-	mTokens.push_back(TokenType::EndOfTokens);
+	mTokens.emplace_back(TokenType::EndOfTokens);
 }
 
 void QueryParser::parseError(std::string message) {
@@ -200,11 +214,11 @@ int QueryParser::getTokenPrecedence() {
 		return -1;
 	}
 
-	auto op = mCurrentToken.charValue();
+	auto op = mCurrentToken.operatorValue();
 	if (mOperators.count(op) > 0) {
 		return mOperators.at(op);
 	} else {
-		parseError("'" + std::string { op } + "' is not a defined binary operator.");
+		parseError("'" + op.toString() + "' is not a defined binary operator.");
 	}
 
 	return -1;
@@ -308,7 +322,7 @@ std::unique_ptr<QueryExpression> QueryParser::parseBinaryOpRHS(int precedence, s
 			return lhs;
 		}
 
-		auto opChar = mCurrentToken.charValue();
+		auto opChar = mCurrentToken.operatorValue();
 		nextToken(); //Eat the operator
 
 		//Parse the unary expression after the binary operator
@@ -321,27 +335,28 @@ std::unique_ptr<QueryExpression> QueryParser::parseBinaryOpRHS(int precedence, s
 		}
 
 		//Merge LHS and RHS
-		switch (opChar) {
-			case '+':
-				lhs = std::make_unique<QueryMathExpression>(std::move(lhs), std::move(rhs), MathOperator::Add);
-				break;
-			case '-':
-				lhs = std::make_unique<QueryMathExpression>(std::move(lhs), std::move(rhs), MathOperator::Sub);
-				break;
-			case '*':
-				lhs = std::make_unique<QueryMathExpression>(std::move(lhs), std::move(rhs), MathOperator::Mul);
-				break;
-			case '/':
-				lhs = std::make_unique<QueryMathExpression>(std::move(lhs), std::move(rhs), MathOperator::Div);
-				break;
-			case '<':
-				lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::LessThan);
-				break;
-			case '>':
-				lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::GreaterThan);
-				break;
-			default:
-				throw std::runtime_error("Not a valid operator.");
+		if (opChar == OperatorChar('+')) {
+			lhs = std::make_unique<QueryMathExpression>(std::move(lhs), std::move(rhs), MathOperator::Add);
+		} else if (opChar == OperatorChar('-')) {
+			lhs = std::make_unique<QueryMathExpression>(std::move(lhs), std::move(rhs), MathOperator::Sub);
+		} else if (opChar == OperatorChar('*')) {
+			lhs = std::make_unique<QueryMathExpression>(std::move(lhs), std::move(rhs), MathOperator::Mul);
+		} else if (opChar == OperatorChar('/')) {
+			lhs = std::make_unique<QueryMathExpression>(std::move(lhs), std::move(rhs), MathOperator::Div);
+		} else if (opChar == OperatorChar('<')) {
+			lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::LessThan);
+		} else if (opChar == OperatorChar('>')) {
+			lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::GreaterThan);
+		} else if (opChar == OperatorChar('<', '=')) {
+			lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::LessThanOrEqual);
+		} else if (opChar == OperatorChar('>', '=')) {
+			lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::GreaterThanOrEqual);
+		} else if (opChar == OperatorChar('=', '=')) {
+			lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::Equal);
+		} else if (opChar == OperatorChar('!', '=')) {
+			lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::NotEqual);
+		} else {
+			throw std::runtime_error("Not a valid operator.");
 		}
 	}
 }
@@ -435,7 +450,7 @@ void QueryParser::parseJoin(JoinClause& join) {
 	auto joinFromColumn = mCurrentToken.identifier();
 	nextToken();
 
-	if (!(mCurrentToken.type() == TokenType::Operator && mCurrentToken.charValue() == '=')) {
+	if (!(mCurrentToken.type() == TokenType::Operator && mCurrentToken.operatorValue() == '=')) {
 		parseError("Expected '='.");
 	}
 	nextToken();
