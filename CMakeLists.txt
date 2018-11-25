@@ -47,7 +47,11 @@ set(SOURCE_FILES
     src/storage.cpp
     src/storage.h
     src/table.cpp
-    src/table.h)
+    src/table.h
+    src/parser/token.h
+    src/parser/token.cpp
+    src/parser/parser.h
+    src/parser/parser.cpp)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)
 
@@ -103,4 +107,7 @@ if(CXXTEST_FOUND)
     add_test_case_default_name(order.h)
     add_test_case_with_defines(tests-order-optimize-expression order.h OPTIMIZE_EXPRESSIONS)
     add_test_case_with_defines(tests-order-optimize-full order.h OPTIMIZE_FULL)
+
+    add_test_case_default_name(tokenizer.h)
+    add_test_case_default_name(parser.h)
 endif()
