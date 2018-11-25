@@ -121,6 +121,7 @@ std::vector<Token> Tokenizer::tokenize(std::string str) {
 				{ "join", TokenType::Join },
 				{ "on", TokenType::On },
 				{ "and", TokenType::And },
+				{ "set", TokenType::Set },
 			};
 
 			if (keywords.count(identifierLower) > 0) {
@@ -522,7 +523,54 @@ std::unique_ptr<QueryOperation> QueryParser::parseSelect() {
 }
 
 std::unique_ptr<QueryOperation> QueryParser::parseUpdate() {
-	return std::unique_ptr<QueryOperation>();
+	nextToken();
+
+	if (mCurrentToken.type() != TokenType::Identifier) {
+		parseError("Expected an identifier.");
+	}
+
+	auto tableName = mCurrentToken.identifier();
+	nextToken();
+
+	if (mCurrentToken.type() != TokenType::Set) {
+		parseError("Expected 'set' keyword.");
+	}
+	nextToken();
+
+	std::vector<std::unique_ptr<QueryAssignExpression>> sets;
+	while (true) {
+		if (mCurrentToken.type() != TokenType::Identifier) {
+			parseError("Expected an identifier.");
+		}
+
+		auto lhs = mCurrentToken.identifier();
+		nextToken();
+
+		if (!(mCurrentToken.type() == TokenType::Operator && mCurrentToken.operatorValue() == '=')) {
+			parseError("Expected '='.");
+		}
+		nextToken();
+
+		auto rhs = parseExpression();
+		sets.push_back(std::make_unique<QueryAssignExpression>(lhs, std::move(rhs)));
+
+		if (mCurrentToken.type() == TokenType::Comma) {
+			nextToken();
+		} else {
+			break;
+		}
+	}
+
+	std::unique_ptr<QueryExpression> filterExpression;
+	if (mCurrentToken.type() != TokenType::EndOfTokens && mCurrentToken.type() == TokenType::Where) {
+		nextToken();
+		filterExpression = parseExpression();
+	}
+
+	return std::make_unique<QueryUpdateOperation>(
+		tableName,
+		std::move(sets),
+		std::move(filterExpression));
 }
 
 std::unique_ptr<QueryOperation> QueryParser::parseInsert() {

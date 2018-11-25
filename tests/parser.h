@@ -354,4 +354,146 @@ public:
 		TS_ASSERT_EQUALS(selectOperation->join.joinOnTable, "test_table2");
 		TS_ASSERT_EQUALS(selectOperation->join.joinOnColumn, "y");
 	}
+
+	void testUpdate1() {
+		auto tokens = Tokenizer::tokenize("UPDATE test_table SET x=y");
+		QueryParser parser(tokens);
+		auto operation = parser.parse();
+		auto updateOperation = dynamic_cast<QueryUpdateOperation*>(operation.get());
+
+		TS_ASSERT_DIFFERS(updateOperation, nullptr);
+		TS_ASSERT_EQUALS(updateOperation->table, "test_table");
+		TS_ASSERT_EQUALS(updateOperation->sets.size(), 1);
+		TS_ASSERT_EQUALS(updateOperation->filter.get(), nullptr);
+
+		TS_ASSERT_EQUALS(updateOperation->sets[0]->column, "x");
+
+		auto set0RHS = dynamic_cast<QueryColumnReferenceExpression*>(updateOperation->sets[0]->value.get());
+		TS_ASSERT_DIFFERS(set0RHS, nullptr);
+		TS_ASSERT_EQUALS(set0RHS->name, "y");
+	}
+
+	void testUpdate2() {
+		auto tokens = Tokenizer::tokenize("UPDATE test_table SET x=y, y=z");
+		QueryParser parser(tokens);
+		auto operation = parser.parse();
+		auto updateOperation = dynamic_cast<QueryUpdateOperation*>(operation.get());
+
+		TS_ASSERT_DIFFERS(updateOperation, nullptr);
+		TS_ASSERT_EQUALS(updateOperation->table, "test_table");
+		TS_ASSERT_EQUALS(updateOperation->sets.size(), 2);
+		TS_ASSERT_EQUALS(updateOperation->filter.get(), nullptr);
+
+		TS_ASSERT_EQUALS(updateOperation->sets[0]->column, "x");
+		auto set0RHS = dynamic_cast<QueryColumnReferenceExpression*>(updateOperation->sets[0]->value.get());
+		TS_ASSERT_DIFFERS(set0RHS, nullptr);
+		TS_ASSERT_EQUALS(set0RHS->name, "y");
+
+		TS_ASSERT_EQUALS(updateOperation->sets[1]->column, "y");
+		auto set1RHS = dynamic_cast<QueryColumnReferenceExpression*>(updateOperation->sets[1]->value.get());
+		TS_ASSERT_DIFFERS(set1RHS, nullptr);
+		TS_ASSERT_EQUALS(set1RHS->name, "z");
+	}
+
+	void testUpdate3() {
+		auto tokens = Tokenizer::tokenize("UPDATE test_table SET x=x + 5, y=z");
+		QueryParser parser(tokens);
+		auto operation = parser.parse();
+		auto updateOperation = dynamic_cast<QueryUpdateOperation*>(operation.get());
+
+		TS_ASSERT_DIFFERS(updateOperation, nullptr);
+		TS_ASSERT_EQUALS(updateOperation->table, "test_table");
+		TS_ASSERT_EQUALS(updateOperation->sets.size(), 2);
+		TS_ASSERT_EQUALS(updateOperation->filter.get(), nullptr);
+
+		TS_ASSERT_EQUALS(updateOperation->sets[0]->column, "x");
+		auto set0RHS = dynamic_cast<QueryMathExpression*>(updateOperation->sets[0]->value.get());
+		TS_ASSERT_DIFFERS(set0RHS, nullptr);
+		TS_ASSERT_EQUALS(set0RHS->op, MathOperator::Add);
+
+		auto set0RHSLHS = dynamic_cast<QueryColumnReferenceExpression*>(set0RHS->lhs.get());
+		TS_ASSERT_DIFFERS(set0RHSLHS, nullptr);
+		TS_ASSERT_EQUALS(set0RHSLHS->name, "x");
+
+		auto set0RHSRHS = dynamic_cast<QueryValueExpression*>(set0RHS->rhs.get());
+		TS_ASSERT_DIFFERS(set0RHSRHS, nullptr);
+		TS_ASSERT_EQUALS(set0RHSRHS->value, QueryValue(5));
+
+		TS_ASSERT_EQUALS(updateOperation->sets[1]->column, "y");
+		auto set1RHS = dynamic_cast<QueryColumnReferenceExpression*>(updateOperation->sets[1]->value.get());
+		TS_ASSERT_DIFFERS(set1RHS, nullptr);
+		TS_ASSERT_EQUALS(set1RHS->name, "z");
+	}
+
+	void testUpdateWhere1() {
+		auto tokens = Tokenizer::tokenize("UPDATE test_table SET x=y WHERE x > 5");
+		QueryParser parser(tokens);
+		auto operation = parser.parse();
+		auto updateOperation = dynamic_cast<QueryUpdateOperation*>(operation.get());
+
+		TS_ASSERT_DIFFERS(updateOperation, nullptr);
+		TS_ASSERT_EQUALS(updateOperation->table, "test_table");
+		TS_ASSERT_EQUALS(updateOperation->sets.size(), 1);
+
+		TS_ASSERT_EQUALS(updateOperation->sets[0]->column, "x");
+
+		auto set0RHS = dynamic_cast<QueryColumnReferenceExpression*>(updateOperation->sets[0]->value.get());
+		TS_ASSERT_DIFFERS(set0RHS, nullptr);
+		TS_ASSERT_EQUALS(set0RHS->name, "y");
+
+		TS_ASSERT_DIFFERS(updateOperation->filter.get(), nullptr);
+		auto compareExpression = dynamic_cast<QueryCompareExpression*>(updateOperation->filter.get());
+		TS_ASSERT_DIFFERS(compareExpression, nullptr);
+		TS_ASSERT_EQUALS(compareExpression->op, CompareOperator::GreaterThan);
+
+		auto compareExpressionSub0 = dynamic_cast<QueryColumnReferenceExpression*>(compareExpression->lhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub0, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub0->name, "x");
+
+		auto compareExpressionSub1 = dynamic_cast<QueryValueExpression*>(compareExpression->rhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub1, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub1->value, QueryValue(5));
+	}
+
+	void testUpdateWhere2() {
+		auto tokens = Tokenizer::tokenize("UPDATE test_table SET x=x + 5, y=z WHERE x > 5");
+		QueryParser parser(tokens);
+		auto operation = parser.parse();
+		auto updateOperation = dynamic_cast<QueryUpdateOperation*>(operation.get());
+
+		TS_ASSERT_DIFFERS(updateOperation, nullptr);
+		TS_ASSERT_EQUALS(updateOperation->table, "test_table");
+		TS_ASSERT_EQUALS(updateOperation->sets.size(), 2);
+
+		TS_ASSERT_EQUALS(updateOperation->sets[0]->column, "x");
+		auto set0RHS = dynamic_cast<QueryMathExpression*>(updateOperation->sets[0]->value.get());
+		TS_ASSERT_DIFFERS(set0RHS, nullptr);
+		TS_ASSERT_EQUALS(set0RHS->op, MathOperator::Add);
+
+		auto set0RHSLHS = dynamic_cast<QueryColumnReferenceExpression*>(set0RHS->lhs.get());
+		TS_ASSERT_DIFFERS(set0RHSLHS, nullptr);
+		TS_ASSERT_EQUALS(set0RHSLHS->name, "x");
+
+		auto set0RHSRHS = dynamic_cast<QueryValueExpression*>(set0RHS->rhs.get());
+		TS_ASSERT_DIFFERS(set0RHSRHS, nullptr);
+		TS_ASSERT_EQUALS(set0RHSRHS->value, QueryValue(5));
+
+		TS_ASSERT_EQUALS(updateOperation->sets[1]->column, "y");
+		auto set1RHS = dynamic_cast<QueryColumnReferenceExpression*>(updateOperation->sets[1]->value.get());
+		TS_ASSERT_DIFFERS(set1RHS, nullptr);
+		TS_ASSERT_EQUALS(set1RHS->name, "z");
+
+		TS_ASSERT_DIFFERS(updateOperation->filter.get(), nullptr);
+		auto compareExpression = dynamic_cast<QueryCompareExpression*>(updateOperation->filter.get());
+		TS_ASSERT_DIFFERS(compareExpression, nullptr);
+		TS_ASSERT_EQUALS(compareExpression->op, CompareOperator::GreaterThan);
+
+		auto compareExpressionSub0 = dynamic_cast<QueryColumnReferenceExpression*>(compareExpression->lhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub0, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub0->name, "x");
+
+		auto compareExpressionSub1 = dynamic_cast<QueryValueExpression*>(compareExpression->rhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub1, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub1->value, QueryValue(5));
+	}
 };

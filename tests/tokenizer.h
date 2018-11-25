@@ -153,6 +153,10 @@ public:
 		tokens = Tokenizer::tokenize("and");
 		TS_ASSERT_EQUALS(tokens.size(), 1);
 		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::And);
+
+		tokens = Tokenizer::tokenize("set");
+		TS_ASSERT_EQUALS(tokens.size(), 1);
+		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Set);
 	}
 
 	void testSeparators1() {
