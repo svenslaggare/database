@@ -220,7 +220,6 @@ bool SelectOperationExecutor::tryExecuteTreeIndexScan() {
 		return false;
 	}
 
-
 	auto& workingStorage = getWorkingStorage(mOperation->table);
 
 	auto possibleIndexScans = mTreeIndexScanner.findPossibleIndexScans(mTable, mFilterExecutionEngine);

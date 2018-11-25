@@ -24,7 +24,7 @@ struct QueryExpression {
 	 * @param oldExpression The expression to replace
 	 * @param newExpression The replacement
 	 */
-	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) {}
+	virtual void update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression);
 };
 
 /**
@@ -160,7 +160,7 @@ struct QueryAssignExpression : public QueryExpression {
 
 	/**
 	 * Creates a new assign expression
-	 * @param column The column to assign the value too
+	 * @param column The column to assign the value to
 	 * @param value The value to assign
 	 */
 	QueryAssignExpression(std::string column, std::unique_ptr<QueryExpression> value);

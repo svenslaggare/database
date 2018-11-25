@@ -1,6 +1,10 @@
 #include "expressions.h"
 #include "visitor.h"
 
+void QueryExpression::update(QueryExpression* oldExpression, std::unique_ptr<QueryExpression> newExpression) {
+
+}
+
 QueryRootExpression::QueryRootExpression(std::unique_ptr<QueryExpression> expression)
 	: root(std::move(expression)) {
 
