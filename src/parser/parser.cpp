@@ -7,15 +7,7 @@
 #include <unordered_map>
 
 namespace {
-//	std::unordered_set<char> twoCharOps = { '<', '>' };
-//
-//	OperatorChar tokenAsOperator(const Token& token) {
-//		if (token.type() == TokenType::TWO_CHAR_OPERATOR) {
-//			return OperatorChar(token.charValue(), token.charValue2());
-//		} else {
-//			return OperatorChar(token.charValue());
-//		}
-//	}
+	std::unordered_set<char> twoCharOps = { '<', '>', '!', '=' };
 }
 
 std::vector<Token> Tokenizer::tokenize(std::string str) {
@@ -152,10 +144,7 @@ std::vector<Token> Tokenizer::tokenize(std::string str) {
 		//Operator
 		if (!tokens.empty()
 			&& tokens.back().type() == TokenType::Operator
-			&& (tokens.back().operatorValue().op1() == '>'
-		    	|| tokens.back().operatorValue().op1() == '<'
-				|| tokens.back().operatorValue().op1() == '!'
-				|| tokens.back().operatorValue().op1() == '=')) {
+			&& (twoCharOps.count(tokens.back().operatorValue().op1()) > 0)) {
 			//If the previous token is an operator and the current one also is, upgrade to a two-op char
 			tokens.back() = Token(TokenType::Operator, OperatorChar(tokens.back().operatorValue().op1(), current));
 		} else {
