@@ -1,7 +1,7 @@
 #pragma once
 #include <iostream>
 #include <cxxtest/TestSuite.h>
-#include "../src/parser/parser.h"
+#include "../src/query_parser/parser.h"
 #include "../src/query_expressions/expressions.h"
 #include "../src/query.h"
 
@@ -176,6 +176,49 @@ public:
 	}
 
 	void testSelect9() {
+		auto tokens = Tokenizer::tokenize("SELECT x FROM test_table WHERE x > 5 AND x < 10");
+		QueryParser parser(tokens);
+		auto operation = parser.parse();
+		auto selectOperation = dynamic_cast<QuerySelectOperation*>(operation.get());
+
+		TS_ASSERT_DIFFERS(selectOperation, nullptr);
+		TS_ASSERT_EQUALS(selectOperation->table, "test_table");
+		TS_ASSERT_EQUALS(selectOperation->projections.size(), 1);
+
+		auto projection0 = dynamic_cast<QueryColumnReferenceExpression*>(selectOperation->projections[0].get());
+		TS_ASSERT_DIFFERS(projection0, nullptr);
+		TS_ASSERT_EQUALS(projection0->name, "x");
+
+		TS_ASSERT_DIFFERS(selectOperation->filter.get(), nullptr);
+		auto compareExpression = dynamic_cast<QueryAndExpression*>(selectOperation->filter.get());
+		TS_ASSERT_DIFFERS(compareExpression, nullptr);
+
+		auto compareExpressionSub0 = dynamic_cast<QueryCompareExpression*>(compareExpression->lhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub0, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub0->op, CompareOperator::GreaterThan);
+
+		auto compareExpressionSub00 = dynamic_cast<QueryColumnReferenceExpression*>(compareExpressionSub0->lhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub00, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub00->name, "x");
+
+		auto compareExpressionSub01 = dynamic_cast<QueryValueExpression*>(compareExpressionSub0->rhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub01, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub01->value, QueryValue(5));
+
+		auto compareExpressionSub1 = dynamic_cast<QueryCompareExpression*>(compareExpression->rhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub1, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub1->op, CompareOperator::LessThan);
+
+		auto compareExpressionSub10 = dynamic_cast<QueryColumnReferenceExpression*>(compareExpressionSub1->lhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub10, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub10->name, "x");
+
+		auto compareExpressionSub11 = dynamic_cast<QueryValueExpression*>(compareExpressionSub1->rhs.get());
+		TS_ASSERT_DIFFERS(compareExpressionSub11, nullptr);
+		TS_ASSERT_EQUALS(compareExpressionSub11->value, QueryValue(10));
+	}
+
+	void testSelectOrder1() {
 		auto tokens = Tokenizer::tokenize("SELECT x FROM test_table ORDER BY x");
 		QueryParser parser(tokens);
 		auto operation = parser.parse();
@@ -192,7 +235,7 @@ public:
 		TS_ASSERT_EQUALS(selectOperation->order.columns[0].descending, false);
 	}
 
-	void testSelect10() {
+	void testSelectOrder2() {
 		auto tokens = Tokenizer::tokenize("SELECT x FROM test_table ORDER BY x DESC");
 		QueryParser parser(tokens);
 		auto operation = parser.parse();
@@ -209,7 +252,7 @@ public:
 		TS_ASSERT_EQUALS(selectOperation->order.columns[0].descending, true);
 	}
 
-	void testSelect11() {
+	void testSelectOrder3() {
 		auto tokens = Tokenizer::tokenize("SELECT x FROM test_table ORDER BY x ASC");
 		QueryParser parser(tokens);
 		auto operation = parser.parse();
@@ -226,7 +269,7 @@ public:
 		TS_ASSERT_EQUALS(selectOperation->order.columns[0].descending, false);
 	}
 
-	void testSelect12() {
+	void testSelectOrder4() {
 		auto tokens = Tokenizer::tokenize("SELECT x FROM test_table ORDER BY x, y");
 		QueryParser parser(tokens);
 		auto operation = parser.parse();
@@ -246,7 +289,7 @@ public:
 		TS_ASSERT_EQUALS(selectOperation->order.columns[1].descending, false);
 	}
 
-	void testSelect13() {
+	void testSelectOrder5() {
 		auto tokens = Tokenizer::tokenize("SELECT x FROM test_table ORDER BY x ASC, y DESC");
 		QueryParser parser(tokens);
 		auto operation = parser.parse();
@@ -266,7 +309,7 @@ public:
 		TS_ASSERT_EQUALS(selectOperation->order.columns[1].descending, true);
 	}
 
-	void testSelect14() {
+	void testSelectOrder6() {
 		auto tokens = Tokenizer::tokenize("SELECT x FROM test_table WHERE x > 5 ORDER BY x");
 		QueryParser parser(tokens);
 		auto operation = parser.parse();
@@ -295,7 +338,7 @@ public:
 		TS_ASSERT_EQUALS(selectOperation->order.columns[0].descending, false);
 	}
 
-	void testSelect15() {
+	void testSelectJoin1() {
 		auto tokens = Tokenizer::tokenize("SELECT x FROM test_table1 INNER JOIN test_table2 ON x=y");
 		QueryParser parser(tokens);
 		auto operation = parser.parse();

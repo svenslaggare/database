@@ -1,7 +1,7 @@
 #pragma once
 #include <cxxtest/TestSuite.h>
 #include "../src/common.h"
-#include "../src/parser/parser.h"
+#include "../src/query_parser/parser.h"
 #include "test_helpers.h"
 
 class IntegrationTestSuite : public CxxTest::TestSuite {

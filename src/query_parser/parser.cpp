@@ -120,6 +120,7 @@ std::vector<Token> Tokenizer::tokenize(std::string str) {
 				{ "inner", TokenType::Inner },
 				{ "join", TokenType::Join },
 				{ "on", TokenType::On },
+				{ "and", TokenType::And },
 			};
 
 			if (keywords.count(identifierLower) > 0) {
@@ -199,6 +200,10 @@ Token& QueryParser::peekToken(int delta) {
 }
 
 int QueryParser::getTokenPrecedence() {
+	if (mCurrentToken.type() == TokenType::And) {
+		return 3;
+	}
+
 	if (mCurrentToken.type() != TokenType::Operator) {
 		return -1;
 	}
@@ -304,14 +309,15 @@ std::unique_ptr<QueryExpression> QueryParser::parsePrimaryExpression() {
 std::unique_ptr<QueryExpression> QueryParser::parseBinaryOpRHS(int precedence, std::unique_ptr<QueryExpression> lhs) {
 	while (true) {
 		//If this is a bin op, find its precedence
-		int tokPrecedence = getTokenPrecedence();
+		int tokenPrecedence = getTokenPrecedence();
 
 		//If this is a binary operator that binds at least as tightly as the current operator, consume it, otherwise we are done.
-		if (tokPrecedence < precedence) {
+		if (tokenPrecedence < precedence) {
 			return lhs;
 		}
 
 		auto opChar = mCurrentToken.operatorValue();
+		auto opTokenType = mCurrentToken.type();
 		nextToken(); //Eat the operator
 
 		//Parse the unary expression after the binary operator
@@ -319,8 +325,8 @@ std::unique_ptr<QueryExpression> QueryParser::parseBinaryOpRHS(int precedence, s
 
 		//If the binary operator binds less tightly with RHS than the operator after RHS, let the pending operator take RHS as its LHS
 		int nextPrecedence = getTokenPrecedence();
-		if (tokPrecedence < nextPrecedence) {
-			rhs = parseBinaryOpRHS(tokPrecedence + 1, std::move(rhs));
+		if (tokenPrecedence < nextPrecedence) {
+			rhs = parseBinaryOpRHS(tokenPrecedence + 1, std::move(rhs));
 		}
 
 		//Merge LHS and RHS
@@ -344,6 +350,8 @@ std::unique_ptr<QueryExpression> QueryParser::parseBinaryOpRHS(int precedence, s
 			lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::Equal);
 		} else if (opChar == OperatorChar('!', '=')) {
 			lhs = std::make_unique<QueryCompareExpression>(std::move(lhs), std::move(rhs), CompareOperator::NotEqual);
+		} else if (opTokenType == TokenType::And) {
+			lhs = std::make_unique<QueryAndExpression>(std::move(lhs), std::move(rhs));
 		} else {
 			throw std::runtime_error("Not a valid operator.");
 		}

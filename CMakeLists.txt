@@ -48,10 +48,10 @@ set(SOURCE_FILES
     src/storage.h
     src/table.cpp
     src/table.h
-    src/parser/token.h
-    src/parser/token.cpp
-    src/parser/parser.h
-    src/parser/parser.cpp src/parser/operator.cpp src/parser/operator.h)
+        src/query_parser/token.h
+        src/query_parser/token.cpp
+        src/query_parser/parser.h
+        src/query_parser/parser.cpp src/query_parser/operator.cpp src/query_parser/operator.h)
 
 add_executable(database ${SOURCE_FILES} src/main.cpp)
 

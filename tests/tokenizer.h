@@ -1,7 +1,7 @@
 #pragma once
 #include <iostream>
 #include <cxxtest/TestSuite.h>
-#include "../src/parser/parser.h"
+#include "../src/query_parser/parser.h"
 
 class TokenizerTestSuite : public CxxTest::TestSuite {
 public:
@@ -149,6 +149,10 @@ public:
 		tokens = Tokenizer::tokenize("desc");
 		TS_ASSERT_EQUALS(tokens.size(), 1);
 		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Desc);
+
+		tokens = Tokenizer::tokenize("and");
+		TS_ASSERT_EQUALS(tokens.size(), 1);
+		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::And);
 	}
 
 	void testSeparators1() {
