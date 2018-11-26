@@ -6,6 +6,7 @@
 
 struct Query;
 struct QueryResult;
+struct QueryOperation;
 
 /**
  * The database configuration
@@ -45,6 +46,12 @@ public:
 	 * @param name The name of the table
 	 */
 	Table& getTable(const std::string& name) const;
+
+	/**
+	 * Parses the given text as an operation
+	 * @param text The text
+	 */
+	std::unique_ptr<QueryOperation> parse(const std::string& text) const;
 
 	/**
 	 * Executes the given query

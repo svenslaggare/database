@@ -10,8 +10,7 @@ public:
 		std::vector<std::vector<QueryValue>> tableData;
 		auto databaseEngine = setupTest(tableData);
 
-		QueryParser parser(Tokenizer::tokenize("SELECT x + 5 FROM test_table WHERE x < 500"));
-		auto query = createQuery(parser.parse());
+		auto query = createQuery(databaseEngine->parse("SELECT x + 5 FROM test_table WHERE x < 500"));
 
 		QueryResult result;
 		databaseEngine->execute(query, result);

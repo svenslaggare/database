@@ -54,24 +54,41 @@ private:
 	int getTokenPrecedence();
 
 	/**
+	 * Asserts that the given token is of the given type and consumes it
+	 * @param type The type of the token
+	 * @param errorMessage The error message
+	 */
+	void assertAndConsume(TokenType type, const std::string& errorMessage);
+
+	/**
+	 * Consumes an identifier
+	 */
+	std::string consumeIdentifier();
+
+	/**
 	 * Parses an Int32 expression
 	 */
-	std::unique_ptr<QueryExpression> parseInt32Expression();
+	std::unique_ptr<QueryValueExpression> parseInt32Expression();
 
 	/**
 	 * Parses an Float32 expression
 	 */
-	std::unique_ptr<QueryExpression> parseFloat32Expression();
+	std::unique_ptr<QueryValueExpression> parseFloat32Expression();
 
 	/**
 	 * Parses an bool expression
 	 */
-	std::unique_ptr<QueryExpression> parseBoolExpression();
+	std::unique_ptr<QueryValueExpression> parseBoolExpression();
 
 	/**
 	 * Parses an identifier expression
 	 */
 	std::unique_ptr<QueryExpression> parseIdentifierExpression();
+
+	/**
+	 * Parses a value expression
+	 */
+	std::unique_ptr<QueryValueExpression> parseValueExpression();
 
 	/**
 	 * Parses a primary expression

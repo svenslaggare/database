@@ -1,6 +1,7 @@
 #include "database_engine.h"
 #include "query.h"
 #include "execution/executor.h"
+#include "query_parser/parser.h"
 
 #include <iostream>
 #include <stack>
@@ -20,6 +21,11 @@ void DatabaseEngine::addTable(std::string name, std::unique_ptr<Table> table) {
 
 Table& DatabaseEngine::getTable(const std::string& name) const {
 	return *mTables.at(name);
+}
+
+std::unique_ptr<QueryOperation> DatabaseEngine::parse(const std::string& text) const {
+	QueryParser parser(Tokenizer::tokenize(text));
+	return parser.parse();
 }
 
 void DatabaseEngine::execute(const Query& query, QueryResult& result) {

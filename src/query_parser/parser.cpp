@@ -122,6 +122,8 @@ std::vector<Token> Tokenizer::tokenize(std::string str) {
 				{ "on", TokenType::On },
 				{ "and", TokenType::And },
 				{ "set", TokenType::Set },
+				{ "into", TokenType::Into },
+				{ "values", TokenType::Values },
 			};
 
 			if (keywords.count(identifierLower) > 0) {
@@ -219,19 +221,38 @@ int QueryParser::getTokenPrecedence() {
 	return -1;
 }
 
-std::unique_ptr<QueryExpression> QueryParser::parseInt32Expression() {
+void QueryParser::assertAndConsume(TokenType type, const std::string& errorMessage) {
+	if (mCurrentToken.type() != type) {
+		parseError(errorMessage);
+	}
+
+	nextToken();
+}
+
+std::string QueryParser::consumeIdentifier() {
+	if (mCurrentToken.type() != TokenType::Identifier) {
+		parseError("Expected an identifier.");
+	}
+
+	auto identifier = mCurrentToken.identifier();
+	nextToken();
+
+	return identifier;
+}
+
+std::unique_ptr<QueryValueExpression> QueryParser::parseInt32Expression() {
 	auto value = mCurrentToken.int32Value();
 	nextToken();
 	return std::make_unique<QueryValueExpression>(QueryValue(value));
 }
 
-std::unique_ptr<QueryExpression> QueryParser::parseFloat32Expression() {
+std::unique_ptr<QueryValueExpression> QueryParser::parseFloat32Expression() {
 	auto value = mCurrentToken.float32Value();
 	nextToken();
 	return std::make_unique<QueryValueExpression>(QueryValue(value));
 }
 
-std::unique_ptr<QueryExpression> QueryParser::parseBoolExpression() {
+std::unique_ptr<QueryValueExpression> QueryParser::parseBoolExpression() {
 	auto value = mCurrentToken.boolValue();
 	nextToken();
 	return std::make_unique<QueryValueExpression>(QueryValue(value));
@@ -279,24 +300,31 @@ std::unique_ptr<QueryExpression> QueryParser::parseIdentifierExpression() {
 
 std::unique_ptr<QueryExpression> QueryParser::parseParenthesisExpression() {
 	nextToken(); //Eat the '('
-	auto expr = parseExpression();
+	auto expression = parseExpression();
+	assertAndConsume(TokenType::RightParenthesis, "Expected ')'.");
+	return expression;
+}
 
-	if (mCurrentToken.type() != TokenType::RightParenthesis) {
-		parseError("Expected ').'");
+std::unique_ptr<QueryValueExpression> QueryParser::parseValueExpression() {
+	switch (mCurrentToken.type()) {
+		case TokenType::Int32:
+			return parseInt32Expression();
+		case TokenType::Float32:
+			return parseFloat32Expression();
+		case TokenType::Bool:
+			return parseBoolExpression();
+		default:
+			return {};
 	}
-
-	nextToken(); //Eat the ')'
-	return expr;
 }
 
 std::unique_ptr<QueryExpression> QueryParser::parsePrimaryExpression() {
+	auto valueExpression = parseValueExpression();
+	if (valueExpression) {
+		return valueExpression;
+	}
+
 	switch (mCurrentToken.type()) {
-	case TokenType::Int32:
-		return parseInt32Expression();
-	case TokenType::Float32:
-		return parseFloat32Expression();
-	case TokenType::Bool:
-		return parseBoolExpression();
 	case TokenType::Identifier:
 		return parseIdentifierExpression();
 	case TokenType::LeftParenthesis:
@@ -392,18 +420,10 @@ std::unique_ptr<QueryExpression> QueryParser::parseExpression() {
 
 void QueryParser::parseOrder(OrderingClause& ordering) {
 	nextToken();
-	if (mCurrentToken.type() != TokenType::By) {
-		parseError("Expected 'by' keyword.");
-	}
-	nextToken();
+	assertAndConsume(TokenType::By, "Expected 'by' keyword.");
 
 	while (true) {
-		if (mCurrentToken.type() != TokenType::Identifier) {
-			parseError("Expected an identifier.");
-		}
-
-		auto orderBy = mCurrentToken.identifier();
-		nextToken();
+		auto orderBy = consumeIdentifier();
 
 		bool descending = false;
 		if (mCurrentToken.type() == TokenType::Asc) {
@@ -426,38 +446,19 @@ void QueryParser::parseOrder(OrderingClause& ordering) {
 
 void QueryParser::parseJoin(JoinClause& join) {
 	nextToken();
-	if (mCurrentToken.type() != TokenType::Join) {
-		parseError("Expected 'join' keyword.");
-	}
-	nextToken();
 
-	if (mCurrentToken.type() != TokenType::Identifier) {
-		parseError("Expected an identifier.");
-	}
-	auto joinOnTable = mCurrentToken.identifier();
-	nextToken();
+	assertAndConsume(TokenType::Join, "Expected 'join' keyword.");
+	auto joinOnTable = consumeIdentifier();
 
-	if (mCurrentToken.type() != TokenType::On) {
-		parseError("Expected 'on' keyword.");
-	}
-	nextToken();
-
-	if (mCurrentToken.type() != TokenType::Identifier) {
-		parseError("Expected an identifier.");
-	}
-	auto joinFromColumn = mCurrentToken.identifier();
-	nextToken();
+	assertAndConsume(TokenType::On, "Expected 'on' keyword.");
+	auto joinFromColumn = consumeIdentifier();
 
 	if (!(mCurrentToken.type() == TokenType::Operator && mCurrentToken.operatorValue() == '=')) {
 		parseError("Expected '='.");
 	}
 	nextToken();
 
-	if (mCurrentToken.type() != TokenType::Identifier) {
-		parseError("Expected an identifier.");
-	}
-	auto joinOnColumn = mCurrentToken.identifier();
-	nextToken();
+	auto joinOnColumn = consumeIdentifier();
 
 	join = JoinClause(joinFromColumn, joinOnTable, joinOnColumn);
 }
@@ -478,12 +479,7 @@ std::unique_ptr<QueryOperation> QueryParser::parseSelect() {
 		}
 	}
 
-	if (mCurrentToken.type() != TokenType::Identifier) {
-		parseError("Expected an identifier.");
-	}
-
-	auto tableName = mCurrentToken.identifier();
-	nextToken();
+	auto tableName = consumeIdentifier();
 
 	std::unique_ptr<QueryExpression> filterExpression;
 	OrderingClause ordering;
@@ -525,26 +521,12 @@ std::unique_ptr<QueryOperation> QueryParser::parseSelect() {
 std::unique_ptr<QueryOperation> QueryParser::parseUpdate() {
 	nextToken();
 
-	if (mCurrentToken.type() != TokenType::Identifier) {
-		parseError("Expected an identifier.");
-	}
-
-	auto tableName = mCurrentToken.identifier();
-	nextToken();
-
-	if (mCurrentToken.type() != TokenType::Set) {
-		parseError("Expected 'set' keyword.");
-	}
-	nextToken();
+	auto tableName = consumeIdentifier();
+	assertAndConsume(TokenType::Set, "Expected 'set' keyword.");
 
 	std::vector<std::unique_ptr<QueryAssignExpression>> sets;
 	while (true) {
-		if (mCurrentToken.type() != TokenType::Identifier) {
-			parseError("Expected an identifier.");
-		}
-
-		auto lhs = mCurrentToken.identifier();
-		nextToken();
+		auto lhs = consumeIdentifier();
 
 		if (!(mCurrentToken.type() == TokenType::Operator && mCurrentToken.operatorValue() == '=')) {
 			parseError("Expected '='.");
@@ -574,7 +556,49 @@ std::unique_ptr<QueryOperation> QueryParser::parseUpdate() {
 }
 
 std::unique_ptr<QueryOperation> QueryParser::parseInsert() {
-	return std::unique_ptr<QueryOperation>();
+	nextToken();
+
+	assertAndConsume(TokenType::Into, "Expected 'into' keyword.");
+	auto tableName = consumeIdentifier();
+	assertAndConsume(TokenType::LeftParenthesis, "Expected '('");
+
+	std::vector<std::string> columnNames;
+	while (true) {
+		auto columnName = consumeIdentifier();
+		columnNames.push_back(columnName);
+
+		if (mCurrentToken.type() != TokenType::Comma) {
+			break;
+		} else {
+			nextToken();
+		}
+	}
+
+	assertAndConsume(TokenType::RightParenthesis, "Expected ')'");
+	assertAndConsume(TokenType::Values, "Expected 'values' keyword");
+	assertAndConsume(TokenType::LeftParenthesis, "Expected '('");
+
+	std::vector<QueryValue> values;
+	while (true) {
+		auto valueExpression = parseValueExpression();
+		if (!valueExpression) {
+			parseError("Expected a value.");
+		}
+
+		values.push_back(valueExpression->value);
+		if (mCurrentToken.type() != TokenType::Comma) {
+			break;
+		} else {
+			nextToken();
+		}
+	}
+
+	assertAndConsume(TokenType::RightParenthesis, "Expected ')'");
+
+	return std::make_unique<QueryInsertOperation>(
+		tableName,
+		columnNames,
+		std::vector<std::vector<QueryValue>> { values });
 }
 
 std::unique_ptr<QueryOperation> QueryParser::parse() {

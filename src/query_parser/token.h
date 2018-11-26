@@ -26,6 +26,8 @@ enum class TokenType : unsigned char {
 	On,
 	And,
 	Set,
+	Into,
+	Values,
 	LeftParenthesis,
 	RightParenthesis,
 	Comma,

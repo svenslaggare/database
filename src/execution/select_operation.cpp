@@ -297,10 +297,9 @@ void SelectOperationExecutor::joinTables() {
 			nonIndexExecutionEngine.execute(nonIndexRowIndex);
 			auto joinValue = nonIndexExecutionEngine.popEvaluation();
 
-			PossibleIndexScan indexScan(0, index, CompareOperator::Equal, joinValue);
 			mTreeIndexScanner.execute(
 				indexTable,
-				indexScan,
+				PossibleIndexScan(0, index, CompareOperator::Equal, joinValue),
 				[&](std::size_t columnIndex, const ColumnDefinition& columnDefinition) {},
 				[&](std::size_t rowIndex, std::size_t columnIndex, const ColumnStorage* columnStorage, bool isFirstColumn) {
 					ExecutorHelpers::addColumnToResult(*columnStorage, indexStorage[columnIndex], rowIndex);

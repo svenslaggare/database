@@ -496,4 +496,26 @@ public:
 		TS_ASSERT_DIFFERS(compareExpressionSub1, nullptr);
 		TS_ASSERT_EQUALS(compareExpressionSub1->value, QueryValue(5));
 	}
+
+	void testInsert1() {
+		auto tokens = Tokenizer::tokenize("INSERT INTO test_table (x, y, z) VALUES (10, 12.0, false)");
+		QueryParser parser(tokens);
+		auto operation = parser.parse();
+		auto insertOperation = dynamic_cast<QueryInsertOperation*>(operation.get());
+
+		TS_ASSERT_DIFFERS(insertOperation, nullptr);
+		TS_ASSERT_EQUALS(insertOperation->table, "test_table");
+
+		TS_ASSERT_EQUALS(insertOperation->columns.size(), 3);
+		TS_ASSERT_EQUALS(insertOperation->columns[0], "x");
+		TS_ASSERT_EQUALS(insertOperation->columns[1], "y");
+		TS_ASSERT_EQUALS(insertOperation->columns[2], "z");
+
+		TS_ASSERT_EQUALS(insertOperation->values.size(), 1);
+		TS_ASSERT_EQUALS(insertOperation->values[0].size(), 3);
+		TS_ASSERT_EQUALS(insertOperation->values[0][0], QueryValue(10));
+		TS_ASSERT_EQUALS(insertOperation->values[0][1], QueryValue(12.0f));
+		TS_ASSERT_EQUALS(insertOperation->values[0][2], QueryValue(false));
+
+	}
 };

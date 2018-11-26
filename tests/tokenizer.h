@@ -157,6 +157,14 @@ public:
 		tokens = Tokenizer::tokenize("set");
 		TS_ASSERT_EQUALS(tokens.size(), 1);
 		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Set);
+
+		tokens = Tokenizer::tokenize("into");
+		TS_ASSERT_EQUALS(tokens.size(), 1);
+		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Into);
+
+		tokens = Tokenizer::tokenize("values");
+		TS_ASSERT_EQUALS(tokens.size(), 1);
+		TS_ASSERT_EQUALS(tokens[0].type(), TokenType::Values);
 	}
 
 	void testSeparators1() {

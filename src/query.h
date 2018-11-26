@@ -118,7 +118,7 @@ struct QueryInsertOperation : public QueryOperation {
 	 * Creates a new insert operation
 	 * @param table The table
 	 * @param columns The columns to insert for
-	 * @param values The values for the columns.
+	 * @param values The values for the columns
 	 */
 	QueryInsertOperation(const std::string& table,
 						 std::vector<std::string> columns,
