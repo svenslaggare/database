@@ -7,9 +7,7 @@
 #include "helpers.h"
 
 Query createQuery(std::unique_ptr<QueryOperation> operation) {
-	std::vector<std::unique_ptr<QueryOperation>> operations;
-	operations.push_back(std::move(operation));
-	return Query(std::move(operations));
+	return Query(std::move(operation));
 }
 
 int main() {
@@ -131,7 +129,8 @@ int main() {
 			std::make_unique<QueryValueExpression>(QueryValue(900.0f)),
 			CompareOperator::GreaterThan)
 //		,std::make_unique<QueryColumnReferenceExpression>("x")
-		,OrderingClause("y", false)
+		,JoinClause()
+		,OrderingClause({ OrderingColumn {"y", false } })
 	));
 
 	std::vector<std::unique_ptr<QueryAssignExpression>> sets;

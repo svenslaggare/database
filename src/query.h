@@ -184,7 +184,7 @@ struct QueryResult {
 
 	/**
 	 * Returns the value of the given element
-	 * @tparam T The type of the data
+	 * @tparam T The type of the element
 	 * @param rowIndex The row of the element
 	 * @param columnIndex The column of the element
 	 */
